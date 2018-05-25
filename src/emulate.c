@@ -19,16 +19,34 @@ void fetch(int* pcReg, char instructions[]) {
   //Fetch (loads PC), passes to decode
 }
 
-void decode(int* decodedInst) {
+int decode(int* decodedInst) {
   //Decode, passes to execute
 
 }
 
-void execute(int* executedInstr) {
+void execute(int* decodedInst, int instrNumber) {
   //Execute calls different functions depending on which of 4 instructions it is executing
   //If reaches an all 0 instruction, then emulator terminates (halt) and prints registers and memory
+// CHECK IF COND IS TRUE, IF IT IS EXECUTE, ELSE IGNORED  
+
+switch (instrNumber) {
+    case 0 : executeDataProcessing(int I, toDecimal(&decodedInst[1], 4) , int, S, int* Rn, int* Rd, int Operand2);
+            break;
+    case 1 : executeMultiply(int A, int S, int Rd, int* Rn, int* Rs, int* Rm);
+            break; 
+    case 2: executeSDT(int I, int P, int U, int L, int* Rn, int* Rd, int offset);
+            break;
+    case 3 : executeBranch(int offset);
+            break; 
+  }
+}
+
+int toDecimal(int* binary, int size) {
+
 
 }
+
+
 
 void printRegisters((int*) registers[]) {
   //Prints value of each register to file
