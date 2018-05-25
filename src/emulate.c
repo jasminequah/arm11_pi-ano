@@ -24,25 +24,48 @@ int decode(int* decodedInst) {
 
 }
 
-void execute(int* decodedInst, int instrNumber) {
+void execute(int* instr, int instrNumber) {
   //Execute calls different functions depending on which of 4 instructions it is executing
   //If reaches an all 0 instruction, then emulator terminates (halt) and prints registers and memory
 // CHECK IF COND IS TRUE, IF IT IS EXECUTE, ELSE IGNORED
 
 switch (instrNumber) {
-    case 0 : executeDataProcessing(int I, toDecimal(&decodedInst[1], 4) , int, S, int* Rn, int* Rd, int Operand2);
+    case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
+     toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
+     //i put the operand as int* since we need to analyze the sub-bits of it
+     //in executeDataProcessing
             break;
-    case 1 : executeMultiply(int A, int S, int Rd, int* Rn, int* Rs, int* Rm);
+    case 1 : executeMultiply(instr[21], instr[20], toDecimal(&instr[16], 4),
+    toDecimal(&instr[12], 4), toDecimal(&instr[8], 4), toDecimal(&instr[0], 4));
             break;
-    case 2: executeSDT(int I, int P, int U, int L, int* Rn, int* Rd, int offset);
+    case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
+      toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
             break;
-    case 3 : executeBranch(int offset);
+    case 3 : executeBranch(&instr[0]);
             break;
   }
 }
 
 int toDecimal(int* binary, int size) {
 
+
+}
+
+
+//Methods for execute:
+void executeDataProcessing(int I, int opcode ,int S, int Rn, int Rd, int* Operand2) {
+
+}
+
+executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
+
+}
+
+void executeSDT(int I, int P, int U, int L, int Rn, int Rd, int* offset) {
+
+}
+
+void executeBranch(int* offset) {
 
 }
 
