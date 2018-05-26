@@ -57,7 +57,19 @@ void executeDataProcessing(int I, int opcode ,int S, int Rn, int Rd, int* Operan
 
 }
 
-executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
+void executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
+	if (A == 1) {
+		Rd = (Rm * Rs) + Rn;
+	}
+	else {
+		Rd = Rm * Rs;
+	}
+	if (S == 1) {
+		int N = (Rd >> 31) & 1;
+		if (Rd == 0) {
+			int Z = 1;
+		}
+	}
 
 }
 
