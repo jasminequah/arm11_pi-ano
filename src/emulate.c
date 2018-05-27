@@ -2,6 +2,13 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#define BITS_IN_WORD 32
+
+/* specific registers */
+#define SP_REG 13
+#define LR_REG 14
+#define PC_REG 15
+#define CPSR_REG 16
 
 /* instructions */
 typedef enum {
@@ -47,7 +54,7 @@ typedef struct arm_decoded {
   int isS;
   int isL;
 
-  /* registers */
+  /* register number [0 - 16] */
   uint32_t rn;
   uint32_t rd;
   uint32_t rs;
@@ -70,6 +77,9 @@ Holds the state of the emulator.
 typedef struct arm_state {
   uint32_t registers[17];
   uint8_t memory[65536];
+
+  decoded_t *decoded;
+
   int isTerminated;
 } state_t;
 
@@ -101,7 +111,7 @@ void execute(int* instr, int instrNumber) {
   //If reaches an all 0 instruction, then emulator terminates (halt) and prints registers and memory
 // CHECK IF COND IS TRUE, IF IT IS EXECUTE, ELSE IGNORED
 
-switch (instrNumber) {
+  switch (instrNumber) {
     case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
      toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
      //i put the operand as int* since we need to analyze the sub-bits of it
@@ -116,6 +126,7 @@ switch (instrNumber) {
     case 3 : executeBranch(&instr[0]);
             break;
   }
+
 }
 
 int toDecimal(int* binary, int size) {
@@ -123,9 +134,37 @@ int toDecimal(int* binary, int size) {
 
 }
 
-
 //Methods for execute:
-void executeDataProcessing(int I, int opcode ,int S, int Rn, int Rd, int* Operand2) {
+
+void executeDataProcessing(state_t state) {
+
+  decoded_t decoded = state.decoded;
+  uint32_t *registers = state.registers;
+
+  uint32_t fstOperand = registers[decoded.rn];
+
+  //Operand 2 is an immediate value
+  if(decoded.isI) {
+    unsigned Imm = decoded.operand2 & 0xFF;
+    uint32_t ImmValue = (uint32_t) Imm;
+    int rotation = 2 * ((decoded.operand2 & 0xF00) >> 8);
+    ImmValue = (ImmValue >> rotation) | (ImmValue << (BITS_IN_WORD - rotation))
+  }
+
+  if(decoded.isS) {
+    // set CPSR flags
+    /*
+    1. V unaffected
+    2. C set to carry out from any shift operation.
+       C set to carry out of bit 31 of the ALU in arithmetic operation.
+       C set to 1 if addition produced a carry (unsigned overflow).
+       C set to 0 if subtraction produced a borrow, 1 otherwise.
+    3. Z is 0 if result is all zeroes.
+    4. N is set to logical value of bit 31
+    */
+  }
+
+
 
 }
 
