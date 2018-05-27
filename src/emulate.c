@@ -1,6 +1,78 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+/* instructions */
+typedef enum {
+  DATA_PROCESSING,
+  MULTIPLY,
+  SINGLE_DATA_TRANSFER,
+  BRANCH
+} instr_t;
+
+/* conditions */
+typedef enum {
+  EQ = 0;
+  NE = 1;
+  GE = 10;
+  LT = 11;
+  GT = 12;
+  LE = 13;
+  AL = 14;
+} cond_t;
+
+/* OpCode for Data Processing */
+typedef enum {
+  AND = 0;
+  EOR = 1;
+  SUB = 2;
+  RSB = 3;
+  ADD = 4;
+  TST = 8;
+  TEQ = 9;
+  CMP = 10;
+  ORR = 12;
+  MOV = 13;
+} opcode_t;
+
+typedef struct arm_decoded {
+  cond_t cond;
+
+  /* single bits */
+  int isI;
+  int isP;
+  int isU;
+  int isA;
+  int isS;
+  int isL;
+
+  /* registers */
+  uint32_t rn;
+  uint32_t rd;
+  uint32_t rs;
+  uint32_t rm;
+
+  opcode_t opcode;
+  uint16_t operand2;
+
+  /* incomplete .. */
+
+}
+
+/*
+Holds the state of the emulator.
+1. 17 32-bit Registers
+2. 64KB memory (64KB = 65536 Bytes)
+..
+3. isTerminated = 1 if reach all 0 instruction.
+*/
+
+typedef struct arm_state {
+  uint32_t registers[17];
+  uint8_t memory[65536];
+  int isTerminated;
+} state_t;
+
 /*
   Should check for and report any errors occuring during program execution (eg: executing undefined with address greater than 65536.
   Writing emulator involves: building a binary file loader and writing the emulator loop.
@@ -89,14 +161,19 @@ void printRegisters((int*) registers[]) {
   for (int i = 0; i < s; i++) {
     printf("$%d : %d (%p)\n", i, *registers[i], registers[i]);
   }
-  printf("PC : %d (%p)\n", *registers[14], registers[14]);
-  printf("CPSR : %d (%p)\n", *regiters[15], registers[15]);
+  printf("PC : %d (%p)\n", *registers[15], registers[15]);
+  printf("CPSR : %d (%p)\n", *registers[16], registers[16]);
 
 }
 
 void printMemory(void) {
   //Prints non-zero memory
   printf("Non-zero memory:\n");
+
+}
+
+// reads input file and puts it somewhere ..
+int readBinary() {
 
 }
 
