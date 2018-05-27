@@ -57,8 +57,7 @@ typedef struct arm_decoded {
   uint16_t operand2;
 
   /* incomplete .. */
-
-}
+} decoded_t;
 
 /*
 Holds the state of the emulator.
