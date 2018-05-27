@@ -66,8 +66,10 @@ void executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
 	}
 	if (S == 1) {
 		int N = (Rd >> 31) & 1;
+		/*cpsrReg[31] = N*/
 		if (Rd == 0) {
 			int Z = 1;
+			/*cpsrReg[30] = Z*/
 		}
 	}
 
@@ -114,7 +116,7 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
   (int*) registers[17]; //17 32-bit registers, store pointers of each register in array
   //Or use C struct?
   char cpsrReg[32];
-  registers[15] = &cpsrReg;
+  registers[16] = &cpsrReg;
 
   //While still have instructions, pass to fetch function
 
