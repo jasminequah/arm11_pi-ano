@@ -146,10 +146,10 @@ uint32_t rotateRight(uint32_t n, int d) {
   return (n >> d) | (n << (BITS_IN_WORD) - rotation);
 }
 
-void executeDataProcessing(state_t state) {
+void executeDataProcessing(state_t *state) {
 
-  decoded_t *decoded = state.decoded;
-  uint32_t *registers = state.registers;
+  decoded_t *decoded = state->decoded;
+  uint32_t *registers = state->registers;
 
   uint32_t fstOperand = registers[decoded->rn];
 
