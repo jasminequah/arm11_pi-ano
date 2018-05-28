@@ -10,6 +10,12 @@
 #define PC_REG 15
 #define CPSR_REG 16
 
+/* Masks for testing function */
+#define MULT_MASK   (uint32_t) 144
+#define SD_MASK     (uint32_t) 67108864
+#define BRANCH_MASK (uint32_t) 167772160
+#define DATA_MASK   (uint32_t) 0
+
 /* instructions */
 typedef enum {
   DATA_PROCESSING,
@@ -63,6 +69,7 @@ typedef struct arm_decoded {
   int isL;
 
   /* register number [0 - 16] */
+  // Only need 4 bits not 32?
   uint32_t rn;
   uint32_t rd;
   uint32_t rs;
@@ -112,10 +119,6 @@ void fetch(int* pcReg, char instructions[]) {
   //Fetch (loads PC), passes to decode
 }
 
-int decode(int* decodedInst) {
-  //Decode, passes to execute
-
-}
 
 //not sure if this is needed. - chris
 int binToDecimal(unsigned binary, int size) {
@@ -242,8 +245,6 @@ void executeDataProcessing(state_t state) {
     */
   }
 
-
-
 }
 
 void executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
@@ -297,9 +298,10 @@ int checkCond(state_t state, cond_t cond) {
 /* Executes calls to different functions if condition satisfied
  * Function called depends on which of 4 instructions it is executing
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
-void execute(state_t state, cond_t cond, int* instr, int instrNumber) {
+
+void execute(state_t state, int instrNumber) {
   //If cond not satisfied may still want to check if all 0 instruction encountered?
-  if (checkCond(state, cond) == 1) {
+  if (state.decoded->cond) {
     switch (instrNumber) {
       case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
        toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
@@ -318,6 +320,57 @@ void execute(state_t state, cond_t cond, int* instr, int instrNumber) {
   }
 
 }
+
+/* Decodes instruction and passes relevant arguments to execute
+ * execute(state, cond, instr, instrNumber) 
+ * Initialises required parts of decoded_t struct for that instruction */
+
+int decode(state_t state) {
+  uint32_t pc = state.registers[PC_REG];
+  if (!pc) {
+    // HALT
+  } else if (pc & BRANCH_MASK) {
+    decoded_t decoded;
+    decoded.offset = (pc << 8) >> 8;
+    decoded.cond   = (cond_t) ((int) (pc >> 28));
+    state.decoded  = &decoded;
+    execute(state, (int) BRANCH);
+  } else if (pc & MULT_MASK) {
+    decoded_t decoded;
+    decoded.cond     = (cond_t) ((int) (pc >> 28));
+    decoded.isA      = pc & (uint32_t) 2097152;
+    decoded.isS      = pc & (uint32_t) 1048576;
+    decoded.rd       = (pc << 12) >> 28;
+    decoded.rn       = (pc << 16) >> 28;
+    decoded.rs       = (pc << 20) >> 28;
+    decoded.rm       = (pc << 28) >> 28;
+    state.decoded    = &decoded;
+    execute(state, (int) MULTIPLY);
+  } else if (pc & SD_MASK) {
+    decoded_t decoded;
+    decoded.cond     = (cond_t) ((int) (pc >> 28));
+    decoded.isI      = pc & (uint32_t) 33554432;
+    decoded.isP      = pc & (uint32_t) 16777216;
+    decoded.isU      = pc & (uint32_t) 8388608;
+    decoded.isL      = pc & (uint32_t) 1048576;
+    decoded.rn       = (pc << 12) >> 28;
+    decoded.rd       = (pc << 16) >> 28;
+    decoded.offset   = (pc << 20) >> 20;
+    state.decoded    = &decoded;
+    execute(state, (int) SINGLE_DATA_TRANSFER);
+  } else if (pc & DATA_MASK) {
+    decoded_t decoded;
+    decoded.cond     = (cond_t) ((int) (pc >> 28));
+    decoded.isI      = pc & (uint32_t) 33554432;
+    decoded.isS      = pc & (uint32_t) 1048576;
+    decoded.opCode   = (opCode_t) ((int) (pc << 7) >> 28);
+    decoded.operand2 = (uint16_t) pc; 
+    state.decoded    = &decoded;
+    execute(state, (int) DATA_PROCESSING);
+  } else {
+    //Unknown instruction, throw an error
+  }
+} 
 
 /* Prints value of each register to file */
 void printRegisters((int*) registers[]) {
