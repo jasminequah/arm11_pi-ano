@@ -41,7 +41,15 @@ typedef enum {
   CMP = 10;
   ORR = 12;
   MOV = 13;
-} opcode_t;
+} opCode_t;
+
+/* shiftType for Data Processing */
+typedef enum {
+  LSL,
+  LSR,
+  ASR,
+  ROR
+} shiftType_t
 
 typedef struct arm_decoded {
   cond_t cond;
@@ -60,7 +68,7 @@ typedef struct arm_decoded {
   uint32_t rs;
   uint32_t rm;
 
-  opcode_t opcode;
+  opCode_t opCode;
   uint16_t operand2;
 
   /* incomplete .. */
@@ -129,12 +137,30 @@ void execute(int* instr, int instrNumber) {
 
 }
 
-int toDecimal(int* binary, int size) {
-
-
+//not sure if this is needed. - chris
+int binToDecimal(unsigned binary, int size) {
+  return 0;
 }
 
-//Methods for execute:
+// Methods for execute:
+
+uint32_t logicalLeft(uint32_t n, int d) {
+  return (n << d);
+}
+
+uint32_t logicalRight(uint32_t n, int d) {
+  return (n >> d);
+}
+
+uint32_t arithmeticRight(uint32_t n, int d) {
+  int temp = (int) n;
+  temp >>= d;
+  return (uint32_t) temp;
+}
+
+uint32_t rotateRight(uint32_t n, int d) {
+  return (n >> d) | (n << (BITS_IN_WORD) - rotation);
+}
 
 void executeDataProcessing(state_t state) {
 
@@ -143,12 +169,50 @@ void executeDataProcessing(state_t state) {
 
   uint32_t fstOperand = registers[decoded.rn];
 
-  //Operand 2 is an immediate value
+  // Operand 2 is an immediate value
   if(decoded.isI) {
     unsigned Imm = decoded.operand2 & 0xFF;
-    uint32_t ImmValue = (uint32_t) Imm;
-    int rotation = 2 * ((decoded.operand2 & 0xF00) >> 8);
-    ImmValue = (ImmValue >> rotation) | (ImmValue << (BITS_IN_WORD - rotation))
+    uint32_t value = (uint32_t) Imm;
+    int shiftAmount = 2 * ((decoded.operand2 & 0xF00) >> 8);
+    value = rotateRight(value, shiftAmount);
+  }
+  // Operand 2 is a register
+  else {
+    uint32_t value = registers[decoded.rm];
+
+
+    int bit4 = decoded.operand2 & 0x10;
+
+    // bit 4 == 1, then shift specified by a register (optional)
+    if(bit4) {
+      int shiftAmount = registers[decoded.rs] & 0xFF;
+    }
+    // bit 4 == 0, then shift by a constant amount
+    else {
+      int shiftAmount = (decoded.operand2 & 0xF800) >> 7;
+    }
+
+    shiftType_t shiftType = (decoded.operand2 & 0x60) >> 5;
+
+    switch(shiftType) {
+      case LSL:
+        //logical left
+        value = logicalLeft(value, shiftAmount);
+        break;
+      case LSR:
+        //logical right
+        value = logicalRight(value, shiftAmount);
+        break;
+      case ASR:
+        //arithmetic right
+        value = arithmeticRight(value, shiftAmount);
+        break;
+      case ROR:
+        //rotate right
+        value = rotateRight(value, shiftAmount);
+        break;
+    }
+
   }
 
   if(decoded.isS) {
