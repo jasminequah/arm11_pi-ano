@@ -70,6 +70,7 @@ typedef struct arm_decoded {
 
   /* register number [0 - 16] */
   // Only need 4 bits not 32?
+  // yeah we only need 5 (not 4) bits, i think we can maybe change this to type int instead of uint32_t.
   uint32_t rn;
   uint32_t rd;
   uint32_t rs;
