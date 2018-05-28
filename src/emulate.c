@@ -11,10 +11,10 @@
 #define CPSR_REG 16
 
 /* Masks for testing function */
-#define MULT_MASK   (uint32_t) 144
-#define SD_MASK     (uint32_t) 67108864
-#define BRANCH_MASK (uint32_t) 167772160
-#define DATA_MASK   (uint32_t) 0
+#define MULT_MASK   0x00000090u
+#define SD_MASK     0x04000000u
+#define BRANCH_MASK 0x0a000000u
+#define DATA_MASK   0x00000000u
 
 /* instructions */
 typedef enum {
@@ -314,7 +314,7 @@ void execute(state_t state, int instrNumber) {
       case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
         toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
               break;
-      case 3 : executeBranch(&instr[0]);
+      case 3 : executeBranch(state);
               break;
     }
   }
@@ -325,7 +325,7 @@ void execute(state_t state, int instrNumber) {
  * execute(state, cond, instr, instrNumber) 
  * Initialises required parts of decoded_t struct for that instruction */
 
-int decode(state_t state) {
+void decode(state_t state) {
   uint32_t pc = state.registers[PC_REG];
   if (!pc) {
     // HALT
@@ -338,8 +338,8 @@ int decode(state_t state) {
   } else if (pc & MULT_MASK) {
     decoded_t decoded;
     decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isA      = pc & (uint32_t) 2097152;
-    decoded.isS      = pc & (uint32_t) 1048576;
+    decoded.isA      = pc & 0x00200000u;
+    decoded.isS      = pc & 0x00100000u;
     decoded.rd       = (pc << 12) >> 28;
     decoded.rn       = (pc << 16) >> 28;
     decoded.rs       = (pc << 20) >> 28;
@@ -349,10 +349,10 @@ int decode(state_t state) {
   } else if (pc & SD_MASK) {
     decoded_t decoded;
     decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isI      = pc & (uint32_t) 33554432;
-    decoded.isP      = pc & (uint32_t) 16777216;
-    decoded.isU      = pc & (uint32_t) 8388608;
-    decoded.isL      = pc & (uint32_t) 1048576;
+    decoded.isI      = pc & 0x02000000u;
+    decoded.isP      = pc & 0x01000000u;
+    decoded.isU      = pc & 0x00800000u;
+    decoded.isL      = pc & 0x00100000u;
     decoded.rn       = (pc << 12) >> 28;
     decoded.rd       = (pc << 16) >> 28;
     decoded.offset   = (pc << 20) >> 20;
@@ -361,8 +361,8 @@ int decode(state_t state) {
   } else if (pc & DATA_MASK) {
     decoded_t decoded;
     decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isI      = pc & (uint32_t) 33554432;
-    decoded.isS      = pc & (uint32_t) 1048576;
+    decoded.isI      = pc & 0x02000000u;
+    decoded.isS      = pc & 0x00100000u;
     decoded.opCode   = (opCode_t) ((int) (pc << 7) >> 28);
     decoded.operand2 = (uint16_t) pc; 
     state.decoded    = &decoded;
