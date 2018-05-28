@@ -270,8 +270,82 @@ void executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
 
 }
 
-void executeSDT(int I, int P, int U, int L, int Rn, int Rd, int* offset) {
+void executeSDT(state_t state) {
+//TODO: Check condition field before proceeding, and check all memory and reg references
+  decoded_t* decoded = state->decoded;
+  uint32_t* registers = state->registers;
+  uint8_t* memory = state->memory;
 
+  uint32_t immOffset = regsiters[(decoded->offset) & 0x000F]; //= value in Rn (CHECK)
+  if (decoded.isI) {
+    int bit4 = (decoded->offset) & 0x10;
+    int shiftAmount;
+    if (bit4) {
+      // bit 4 == 1, shift by value in Rs (the last byte)
+      shiftAmount = registers[((decoded->offset) & 0xF00) >> 8] & 0xFF //last byte of Rs?
+      int
+    } else {
+      //bit4 == 0, shift by integer
+      shiftAmount = (decoded->offset & 0xF800) >> 7; // = integer we shift by
+    }
+
+    shiftType_t shiftType = (decoded->offset & 0x60) >> 5;
+    switch(shiftType) {
+      case LSL:
+        //logical left
+        immOffset = logicalLeft(immOffset, shiftAmount);
+        break;
+      case LSR:
+        //logical right
+        immOffset = logicalRight(immOffset, shiftAmount);
+        break;
+      case ASR:
+        //arithmetic right
+        immOffset = arithmeticRight(immOffset, shiftAmount);
+        break;
+      case ROR:
+        //rotate right
+        immOffset = rotateRight(immOffset, shiftAmount);
+        break;
+    }
+  } else {
+    //Offset is an unsigned 12 bit immediate offset
+    immOffset = decoded->offset; //CHECK
+  }
+
+  uint32_t newBase;
+  if (decoded.isU) {
+    //offset is added to the base reg
+    newBase = registers[decoded->rn] + immOffset;
+  } else {
+    //offset is subtracted to the base reg
+    newBase = registers[decoded->rn] - immOffset;
+    // note to self: decoded->rn or decoded.rn?
+  }
+
+  if (decoded.isP) {
+    //pre-indexing : offset is +/- to the base reg before transferring data
+    if (decoded.isL) {
+      //word is loaded from memory
+      registers[decoded->rd] = memory[newBase];
+    } else {
+      //word is stored into memory
+      memory[newBase] = registers[decoded->rd];
+    }
+
+
+  } else {
+    //post-indexing : offset is +/- to the base reg after transferring
+    if (decoded.isL) {
+      //word is loaded from memory
+      registers[decoded->rd] = memory[decoded->rn];
+    } else {
+      //word is stored into memory - (Rd contents goes into memory)
+      memory[decoded->rn] = registers[decoded->rd];
+    }
+    //offset is +/- to the base reg
+    registers[decoded->rn] = newBase; //CHECK
+  }
 }
 
 /* Branch Instruction:
@@ -322,7 +396,7 @@ void execute(state_t state, int instrNumber) {
 }
 
 /* Decodes instruction and passes relevant arguments to execute
- * execute(state, cond, instr, instrNumber) 
+ * execute(state, cond, instr, instrNumber)
  * Initialises required parts of decoded_t struct for that instruction */
 
 void decode(state_t state) {
@@ -364,13 +438,13 @@ void decode(state_t state) {
     decoded.isI      = pc & 0x02000000u;
     decoded.isS      = pc & 0x00100000u;
     decoded.opCode   = (opCode_t) ((int) (pc << 7) >> 28);
-    decoded.operand2 = (uint16_t) pc; 
+    decoded.operand2 = (uint16_t) pc;
     state.decoded    = &decoded;
     execute(state, (int) DATA_PROCESSING);
   } else {
     //Unknown instruction, throw an error
   }
-} 
+}
 
 /* Prints value of each register to file */
 void printRegisters((int*) registers[]) {
