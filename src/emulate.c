@@ -164,35 +164,35 @@ uint32_t rotateRight(uint32_t n, int d) {
 
 void executeDataProcessing(state_t state) {
 
-  decoded_t decoded = state.decoded;
+  decoded_t *decoded = state.decoded;
   uint32_t *registers = state.registers;
 
-  uint32_t fstOperand = registers[decoded.rn];
+  uint32_t fstOperand = registers[decoded->rn];
 
   // Operand 2 is an immediate value
   if(decoded.isI) {
-    unsigned Imm = decoded.operand2 & 0xFF;
+    unsigned Imm = decoded->operand2 & 0xFF;
     uint32_t value = (uint32_t) Imm;
-    int shiftAmount = 2 * ((decoded.operand2 & 0xF00) >> 8);
+    int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
     value = rotateRight(value, shiftAmount);
   }
   // Operand 2 is a register
   else {
-    uint32_t value = registers[decoded.rm];
+    uint32_t value = registers[decoded->rm];
 
 
-    int bit4 = decoded.operand2 & 0x10;
+    int bit4 = decoded->operand2 & 0x10;
 
     // bit 4 == 1, then shift specified by a register (optional)
     if(bit4) {
-      int shiftAmount = registers[decoded.rs] & 0xFF;
+      int shiftAmount = registers[decoded->rs] & 0xFF;
     }
     // bit 4 == 0, then shift by a constant amount
     else {
-      int shiftAmount = (decoded.operand2 & 0xF800) >> 7;
+      int shiftAmount = (decoded->operand2 & 0xF800) >> 7;
     }
 
-    shiftType_t shiftType = (decoded.operand2 & 0x60) >> 5;
+    shiftType_t shiftType = (decoded->operand2 & 0x60) >> 5;
 
     switch(shiftType) {
       case LSL:
@@ -215,7 +215,40 @@ void executeDataProcessing(state_t state) {
 
   }
 
-  if(decoded.isS) {
+  switch(decoded->opCode) {
+    case AND:
+
+      break;
+    case EOR:
+
+      break;
+    case SUB:
+
+      break;
+    case RSB:
+
+      break;
+    case ADD:
+
+      break;
+    case TST:
+
+      break;
+    case TEQ:
+
+      break;
+    case CMP:
+
+      break;
+    case ORR:
+
+      break;
+    case MOV:
+
+      break;
+  }
+
+  if(decoded->isS) {
     // set CPSR flags
     /*
     1. V unaffected
