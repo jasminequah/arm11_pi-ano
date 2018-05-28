@@ -20,27 +20,27 @@ typedef enum {
 
 /* conditions */
 typedef enum {
-  EQ = 0;
-  NE = 1;
-  GE = 10;
-  LT = 11;
-  GT = 12;
-  LE = 13;
-  AL = 14;
+  EQ = 0,
+  NE = 1,
+  GE = 10,
+  LT = 11,
+  GT = 12,
+  LE = 13,
+  AL = 14,
 } cond_t;
 
 /* OpCode for Data Processing */
 typedef enum {
-  AND = 0;
-  EOR = 1;
-  SUB = 2;
-  RSB = 3;
-  ADD = 4;
-  TST = 8;
-  TEQ = 9;
-  CMP = 10;
-  ORR = 12;
-  MOV = 13;
+  AND = 0,
+  EOR = 1,
+  SUB = 2,
+  RSB = 3,
+  ADD = 4,
+  TST = 8,
+  TEQ = 9,
+  CMP = 10,
+  ORR = 12,
+  MOV = 13,
 } opCode_t;
 
 /* shiftType for Data Processing */
@@ -49,7 +49,7 @@ typedef enum {
   LSR,
   ASR,
   ROR
-} shiftType_t
+} shiftType_t;
 
 typedef struct arm_decoded {
   cond_t cond;
@@ -67,6 +67,9 @@ typedef struct arm_decoded {
   uint32_t rd;
   uint32_t rs;
   uint32_t rm;
+  uint32_t offset;
+  /* offset taken from bits 0-23 and extended to 32 bits */
+  /* For different instructions some of these aren't used - might be a bit inefficient */
 
   opCode_t opCode;
   uint16_t operand2;
@@ -114,29 +117,6 @@ int decode(int* decodedInst) {
 
 }
 
-void execute(int* instr, int instrNumber) {
-  //Execute calls different functions depending on which of 4 instructions it is executing
-  //If reaches an all 0 instruction, then emulator terminates (halt) and prints registers and memory
-// CHECK IF COND IS TRUE, IF IT IS EXECUTE, ELSE IGNORED
-
-  switch (instrNumber) {
-    case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
-     toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
-     //i put the operand as int* since we need to analyze the sub-bits of it
-     //in executeDataProcessing
-            break;
-    case 1 : executeMultiply(instr[21], instr[20], toDecimal(&instr[16], 4),
-    toDecimal(&instr[12], 4), toDecimal(&instr[8], 4), toDecimal(&instr[0], 4));
-            break;
-    case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
-      toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
-            break;
-    case 3 : executeBranch(&instr[0]);
-            break;
-  }
-
-}
-
 //not sure if this is needed. - chris
 int binToDecimal(unsigned binary, int size) {
   return 0;
@@ -158,6 +138,7 @@ uint32_t arithmeticRight(uint32_t n, int d) {
   return (uint32_t) temp;
 }
 
+// TODO: Define rotation
 uint32_t rotateRight(uint32_t n, int d) {
   return (n >> d) | (n << (BITS_IN_WORD) - rotation);
 }
@@ -287,14 +268,54 @@ void executeSDT(int I, int P, int U, int L, int Rn, int Rd, int* offset) {
 
 }
 
-void executeBranch(int* offset) {
+/* Branch Instruction:
+ * Adds offset from bits 0 to 23 of decoded instruction to PC */
+void executeBranch(state_t state) {
+  decoded_t* decoded = state.decoded;
+  /* Need to check if will overflow or assume it won't? */
+  state.registers[PC_REG] += decoded->offset;
+}
+
+/* Restructure to put execute functions in different files for better readability */
+
+/* TODO:
+ * Checks whether condition satisfied according to condition code in decoded instruction
+ * Shifts CPSR register right so can compare bits 28-31
+ * Returns 0 or 1 accordingly */
+
+int checkCond(state_t state, cond_t cond) {
+  decoded_t* decoded = state.decoded;
+  uint32_t flags = logicalRight(state.registers[CPSR_REG], 28);
+  return flags & decoded->cond;
+}
+
+/* Executes calls to different functions if condition satisfied
+ * Function called depends on which of 4 instructions it is executing
+ * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
+void execute(state_t state, cond_t cond, int* instr, int instrNumber) {
+  //If cond not satisfied may still want to check if all 0 instruction encountered?
+  if (checkCond(state, cond) == 1) {
+    switch (instrNumber) {
+      case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
+       toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
+       //i put the operand as int* since we need to analyze the sub-bits of it
+       //in executeDataProcessing
+              break;
+      case 1 : executeMultiply(instr[21], instr[20], toDecimal(&instr[16], 4),
+      toDecimal(&instr[12], 4), toDecimal(&instr[8], 4), toDecimal(&instr[0], 4));
+              break;
+      case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
+        toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
+              break;
+      case 3 : executeBranch(&instr[0]);
+              break;
+    }
+  }
 
 }
 
-
-
+/* Prints value of each register to file */
 void printRegisters((int*) registers[]) {
-  //Prints value of each register to file
   printf("Registers:\n");
   for (int i = 0; i < s; i++) {
     printf("$%d : %d (%p)\n", i, *registers[i], registers[i]);
@@ -304,13 +325,13 @@ void printRegisters((int*) registers[]) {
 
 }
 
+/* Prints value of non-zero memory */
 void printMemory(void) {
-  //Prints non-zero memory
   printf("Non-zero memory:\n");
 
 }
 
-// reads input file and puts it somewhere ..
+/* Reads input file and puts it somewhere ... */
 int readBinary() {
 
 }
