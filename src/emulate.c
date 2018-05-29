@@ -17,6 +17,11 @@
 #define BRANCH_MASK 0x0a000000u
 #define DATA_MASK   0x00000000u
 
+/* Masks for operations */
+#define LAST_4_BITS 0x000F
+#define FIRST_4_BITS 0xF00
+#define LAST_BYTE 0xFF
+
 /* instructions */
 typedef enum {
   DATA_PROCESSING,
@@ -278,13 +283,13 @@ void executeSDT(state_t *state) {
   uint32_t* registers = state->registers;
   uint8_t* memory    = state->memory;
 
-  uint32_t immOffset = registers[(decoded->offset) & 0x000F]; //= value in Rn (CHECK)
+  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS; //= value in Rn (CHECK)
   if (decoded->isI) {
     int bit4 = (decoded->offset) & 0x10;
     int shiftAmount;
     if (bit4) {
       // bit 4 == 1, shift by value in Rs (the last byte)
-      shiftAmount = registers[((decoded->offset) & 0xF00) >> 8] & 0xFF; //last byte of Rs?
+      shiftAmount = registers[((decoded->offset) & FIRST_4_BITS) >> 8] & LAST_BYTE; //last byte of Rs?
       // int
     } else {
       //bit4 == 0, shift by integer
