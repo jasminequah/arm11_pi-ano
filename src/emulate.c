@@ -351,7 +351,7 @@ void executeSDT(state_t *state) {
 
 /* Branch Instruction:
  * Adds offset from bits 0 to 23 of decoded instruction to PC */
-void executeBranch(state_t* state) {
+void executeBranch(state_t *state) {
   decoded_t* decoded = state->decoded;
   /* Need to check if will overflow or assume it won't? */
   state->registers[PC_REG] += decoded->offset;
@@ -364,7 +364,7 @@ void executeBranch(state_t* state) {
  * Shifts CPSR register right so can compare bits 28-31
  * Returns 0 or 1 accordingly */
 
-int checkCond(state_t* state, cond_t cond) {
+int checkCond(state_t *state, cond_t cond) {
   decoded_t* decoded = state->decoded;
   uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
   return (flags == decoded->cond || decoded->cond == 14);
@@ -374,7 +374,7 @@ int checkCond(state_t* state, cond_t cond) {
  * Function called depends on which of 4 instructions it is executing
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
-void execute(state_t* state, int instrNumber) {
+void execute(state_t *state, int instrNumber) {
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
     switch (instrNumber) {
@@ -431,7 +431,7 @@ instr_t getInstructionNum(uint32_t pc) {
   }
 }
 
-void decode(state_t* state) {
+void decode(state_t *state) {
   uint32_t pc = getInstruction(state);
   if (!pc) {
     state->isTerminated = 1;
@@ -535,7 +535,6 @@ void readBinary(state_t *state, char* fileName) {
 int main(int argc, char* argv[]) { // binary filename as sole argument
 
   //assert (argc == 2);
-
   // initialise system to default state
   state_t state = {{0}, {0}, 0, 0};
 
