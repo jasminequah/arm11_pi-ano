@@ -143,18 +143,19 @@ void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
 
- // uint32_t fstOperand = registers[decoded->rn];
+  uint32_t operand1 = registers[decoded->rn];
+  uint32_t operand2;
 
   // Operand 2 is an immediate value
   if(decoded->isI) {
     unsigned Imm = decoded->operand2 & 0xFF;
-    uint32_t value = (uint32_t) Imm;
+    uint32_t operand2 = (uint32_t) Imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
-    value = rotateRight(value, shiftAmount);
+    operand2 = rotateRight(operand2, shiftAmount);
   }
   // Operand 2 is a register
   else {
-    uint32_t value = registers[decoded->rm];
+    uint32_t operand2 = registers[decoded->rm];
 
 
     int bit4 = decoded->operand2 & 0x10;
@@ -174,27 +175,25 @@ void executeDataProcessing(state_t *state) {
     switch(shiftType) {
       case LSL:
         //logical left
-        value = logicalLeft(value, shiftAmount);
+        operand2 = logicalLeft(operand2, shiftAmount);
         break;
       case LSR:
         //logical right
-        value = logicalRight(value, shiftAmount);
+        operand2 = logicalRight(operand2, shiftAmount);
         break;
       case ASR:
         //arithmetic right
-        value = arithmeticRight(value, shiftAmount);
+        operand2 = arithmeticRight(operand2, shiftAmount);
         break;
       case ROR:
         //rotate right
-        value = rotateRight(value, shiftAmount);
+        operand2 = rotateRight(operand2, shiftAmount);
         break;
     }
 
   }
 
   uint32_t result;
-  uint16_t operand2 = decoded->operand2;
-  uint32_t operand1 = state->registers[decoded->rn];
   switch(decoded->opCode) {
     case AND:
       result = operand1 & operand2;
