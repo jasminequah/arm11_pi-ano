@@ -192,21 +192,19 @@ void executeDataProcessing(state_t *state) {
 
   }
 
+  uint32_t result;
   switch(decoded->opCode) {
     case AND:
-
-      break;
+      result = operand1 & operand2;
     case EOR:
-
-      break;
+      result = operand1 ^ operand2;
     case SUB:
-
-      break;
+      result = (uint32_t) ((int) operand1 - (int) operand2);
     case RSB:
-
+      result = (uint32_t) ((int) operand2 - (int) operand1);
       break;
     case ADD:
-
+      result = (uint32_t) ((int) operand1 + (int) operand2);
       break;
     case TST:
 
@@ -218,11 +216,13 @@ void executeDataProcessing(state_t *state) {
 
       break;
     case ORR:
-
+      result = operand1 | operand2;
       break;
     case MOV:
-
+      result = operand2;
       break;
+    default:
+      registers[decoded->rd] = result;
   }
 
   if(decoded->isS) {
@@ -410,8 +410,8 @@ void execute(state_t* state, int instrNumber) {
  * Initialises required parts of decoded_t struct for that instruction */
 
 uint32_t getInstruction(state_t *state) {
-  return state->memory[state->registers[PC_REG]];	  
-  //uint32_t byte = 
+  return state->memory[state->registers[PC_REG]];
+  //uint32_t byte =
 }
 
 void decode(state_t* state) {
