@@ -5,6 +5,7 @@
 
 #define BITS_IN_WORD 32
 #define MEMORY_SIZE 65536
+#define NUM_REGS 17
 
 /* specific registers */
 #define SP_REG 13
@@ -105,8 +106,8 @@ Holds the state of the emulator.
 */
 
 typedef struct arm_state {
-  uint32_t registers[17];
-  uint8_t memory[MEMORY_SIZE];
+  uint32_t *registers;
+  uint8_t *memory;
 
   decoded_t *decoded;
 
@@ -567,29 +568,61 @@ void readBinary(state_t *state, char* fileName) {
 
 }
 
+state_t *newState(void) {
+  state_t *state = malloc(sizeof(state_t));
+  if (state == NULL) {
+    printf("could not allocate space for state.");
+    return NULL;
+  }
+
+  state->decoded = malloc(sizeof(decoded_t));
+  if (state->decoded == NULL) {
+    printf("could not allocate space for decoded struct.");
+    return NULL;
+  }
+
+  state->registers = calloc(NUM_REGS, sizeof(uint32_t));
+  if (state->registers == NULL) {
+    printf("could not allocate space for registers.");
+    return NULL;
+  }
+
+  state->memory = calloc(MEMORY_SIZE, sizeof(uint8_t));
+  if (state->memory == NULL) {
+    printf("could not allocate space for memory.");
+    return NULL;
+  }
+
+  state->isTerminated = 0;
+
+  return state;
+}
 
 int main(int argc, char* argv[]) { // binary filename as sole argument
 
   //assert (argc == 2);
   // initialise system to default state
-  state_t state = {{0}, {0}, 0, 0};
+  state_t *state = newState();
+  if (state == NULL) {
+    return EXIT_FAILURE;
+  }
 
-  readBinary(&state, argv[1]);
+  readBinary(state, argv[1]);
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
-  while (!state.isTerminated) {
+  while (!state->isTerminated) {
     //state.registers[PC_REG] += 0x4u;
 
-    if (state.registers[PC_REG] > 0x10000u) {
+    if (state->registers[PC_REG] > 0x10000u) {
       fprintf(stderr, "Attempt to execute an undefined with address greater than 65536.\n");
       return EXIT_FAILURE;
     } else {
-      decode(&state);
+      decode(state);
     }
-    state.registers[PC_REG] += 0x4u;
+    state->registers[PC_REG] += 0x4u;
   }
 
-  printState(&state);
+  printState(state);
 
   return EXIT_SUCCESS;
 }
