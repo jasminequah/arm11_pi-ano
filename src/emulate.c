@@ -189,34 +189,40 @@ void executeDataProcessing(state_t *state) {
 
   }
 
-  uint32_t result;
+  uint32_t result = 0;
   switch(decoded->opCode) {
     case AND:
       result = operand1 & operand2;
+      break;
     case EOR:
       result = operand1 ^ operand2;
+      break;
     case SUB:
       result = (uint32_t) ((int) operand1 - (int) operand2);
+      break;
     case RSB:
       result = (uint32_t) ((int) operand2 - (int) operand1);
+      break;
     case ADD:
       result = (uint32_t) ((int) operand1 + (int) operand2);
+      break;
     case TST:
-
+      break;
     case TEQ:
-
+      break;
     case CMP:
-
+      break;
 
     case ORR:
       result = operand1 | operand2;
-
+      break;
     case MOV:
       result = operand2;
-
-    default:
-      registers[decoded->rd] = result;
+      break;
   }
+  printf("Rd value before: %u", registers[decoded->rd]);
+  registers[decoded->rd] = result;
+  printf("Rd value after: %u", registers[decoded->rd]);
 
   if(decoded->isS) {
     // set CPSR flags
@@ -418,7 +424,7 @@ instr_t getInstructionNum(uint32_t pc) {
   } else {
     return DATA_PROCESSING;
   }
-}	
+}
 
 void decode(state_t* state) {
   uint32_t pc = getInstruction(state);
@@ -429,7 +435,7 @@ void decode(state_t* state) {
     decoded_t decoded;
     switch (instrNum) {
 
-      case(BRANCH) : 
+      case(BRANCH) :
         decoded.offset = (pc << 8) >> 8;
         decoded.cond   = (cond_t) ((int) (pc >> 28));
         state->decoded = &decoded;
@@ -437,6 +443,7 @@ void decode(state_t* state) {
         break;
 
       case(DATA_PROCESSING) :
+        printf("I'm in data processing \n");
         decoded.cond = (cond_t)((int)(pc >> 28));
         decoded.isI = pc & 0x02000000u;
         decoded.isS = pc & 0x00100000u;
@@ -459,7 +466,7 @@ void decode(state_t* state) {
         execute(state, (int) SINGLE_DATA_TRANSFER);
         break;
 
-      case(MULTIPLY) : 
+      case(MULTIPLY) :
         decoded.cond     = (cond_t) ((int) (pc >> 28));
         decoded.isA      = pc & 0x00200000u;
         decoded.isS      = pc & 0x00100000u;
