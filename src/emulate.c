@@ -91,7 +91,7 @@ Holds the state of the emulator.
 
 typedef struct arm_state {
   uint32_t registers[17];
-  uint32_t memory[65536];
+  uint8_t memory[65536];
   // I changed this from uint8_t to uint32_t - I think each memory location should hold uint32_t since we want each to have 4 bytes? - Jasmine
 
   decoded_t *decoded;
@@ -249,7 +249,7 @@ void executeMultiply(state_t *state) {
     state->decoded->rd = state->decoded->rm*state->decoded->rs
     /*Rd = Rm * Rs;*/
   }
-  
+
   if (state->decoded->isS) {
     int N = (Rd >> 31) & 1;
     state->registers[CPSR][31] = N
@@ -375,19 +375,19 @@ void execute(state_t* state, int instrNumber) {
        //i put the operand as int* since we need to analyze the sub-bits of it
        //in executeDataProcessing
                break;
-      
+
       case 1 : executeMultiply(instr[21], instr[20], toDecimal(&instr[16], 4),
       toDecimal(&instr[12], 4), toDecimal(&instr[8], 4), toDecimal(&instr[0], 4));
                break;
       /* case 1 : executeMultiply(state);
                   break; */
-      
+
       case 2 : executeSDT(*state);
 	       break;
       /* case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
         toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
               break; */
-      
+
       case 3 : executeBranch(state);
                break;
     }
@@ -449,14 +449,14 @@ void decode(state_t* state) {
 }
 
 /* Prints values of registers and non-zero memory to file */
-void printState(state_t state) {
+void printState(state_t *state) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
     printf("$%d : %d (0x%x)\n", i, state.registers[i], state.registers[i]);
   }
   printf("PC : %d (0x%x)\n", state.registers[PC_REG], state.registers[PC_REG]);
   printf("CPSR : %d (0x%x)\n", state.registers[CPSR_REG], state.registers[CPSR_REG]);
-  
+
   printf("Non-zero memory:");
   uint32_t i = 0;
   while (i < sizeof(state.memory)) {
@@ -469,22 +469,45 @@ void printState(state_t state) {
 }
 
 /* Reads input file and puts it somewhere ... */
-int readBinary() {
+int readBinary(state_t *state, char* fileName) {
+
+  FILE *fptr;
+  fptr = fopen(fileName, "rb"); // open files
+
+  fseek(fptr, 0, SEEK_END);
+  int fileLen = ftell(file);
+  fseek(fptr, 0, SEEK_SET);
+
+  uint8_t *memPtr = &(state->memory[0]);
+
+  for (int i = 0; i < fileLen / 4; i++) {
+    for (int j = 3; j >=0; j--) {
+      fread(memPtr + j, 1, 1, fptr);
+    }
+    memPtr += 4;
+  }
+
+  close(fptr);
 
 }
 
 
 int main(int argc, char* argv[]) { // binary filename as sole argument
-  
-  FILE *fptr;
-  fptr = fopen(argv[1], "rb"); // open files
 
-  /* Initalise system state to default state */
+  assert (argc2 == 2);
+
+  // initialise system to default state
   state_t state = {{0}, {0}, 0, 0};
+
+  readBinary(&state, argv[1]);
+
+
+
+
 
   // TODO: Load instructions into memory locations
 
-  fclose(fptr);
+
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state.isTerminated) {
