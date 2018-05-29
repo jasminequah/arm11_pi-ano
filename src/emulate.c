@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #define BITS_IN_WORD 32
+#define MEMORY_SIZE 65536
 
 /* specific registers */
 #define SP_REG 13
@@ -97,7 +98,7 @@ Holds the state of the emulator.
 
 typedef struct arm_state {
   uint32_t registers[17];
-  uint8_t memory[65536];
+  uint8_t memory[MEMORY_SIZE];
 
   decoded_t *decoded;
 
@@ -422,7 +423,7 @@ uint32_t getInstruction(state_t *state) {
 
 void decode(state_t* state) {
   uint32_t pc = getInstruction(state);
-  if (pc == 0) {
+  if (!pc) {
     state->isTerminated = 1;
   } else if (pc & BRANCH_MASK) {
     decoded_t decoded;
@@ -432,14 +433,14 @@ void decode(state_t* state) {
     execute(state, (int) BRANCH);
   }
   else if (pc & DATA_MASK) {
-	  decoded_t decoded;
-	  decoded.cond = (cond_t)((int)(pc >> 28));
-	  decoded.isI = pc & 0x02000000u;
-	  decoded.isS = pc & 0x00100000u;
-	  decoded.opCode = (opCode_t)((int)(pc << 7) >> 28);
-	  decoded.operand2 = (uint16_t)pc;
-	  state->decoded = &decoded;
-	  execute(state, (int)DATA_PROCESSING);
+    decoded_t decoded;
+    decoded.cond = (cond_t)((int)(pc >> 28));
+    decoded.isI = pc & 0x02000000u;
+    decoded.isS = pc & 0x00100000u;
+    decoded.opCode = (opCode_t)((int)(pc << 7) >> 28);
+    decoded.operand2 = (uint16_t)pc;
+    state->decoded = &decoded;
+    execute(state, (int)DATA_PROCESSING);
   } else if (pc & SD_MASK) {
     decoded_t decoded;
     decoded.cond     = (cond_t) ((int) (pc >> 28));
@@ -463,7 +464,7 @@ void decode(state_t* state) {
     decoded.rm       = (pc << 28) >> 28;
     state->decoded   = &decoded;
     execute(state, (int) MULTIPLY);
-	} else {
+  } else {
     fprintf(stderr, "Unrecognised instruction.\n");
     // TODO: Exit failure
     return;
@@ -479,13 +480,13 @@ void printState(state_t *state) {
   printf("PC : %d (0x%x)\n", state->registers[PC_REG], state->registers[PC_REG]);
   printf("CPSR : %d (0x%x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
 
-  printf("Non-zero memory:");
+  printf("Non-zero memory:\n");
   uint8_t i = 0;
-  while (i < (uint8_t) (sizeof(state->memory) / 4)) {
+  while (i < MEMORY_SIZE / 4) {
     if (state->memory[i] == 0) {
       break;
     } else {
-      printf("0x%x: 0x%x%x%x%x", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
+      printf("0x%x: 0x%x%x%x%x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
       i += 4;
     }
   }
@@ -534,7 +535,7 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
     } else {
       decode(&state);
     }
-	state.registers[PC_REG] += 0x4u;
+    state.registers[PC_REG] += 0x4u;
   }
 
   printState(&state);
