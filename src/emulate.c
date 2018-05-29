@@ -242,20 +242,31 @@ void executeDataProcessing(state_t *state) {
 
 void executeMultiply(state_t *state) {
   if (state->decoded->isA == 1) {
-     state->decoded->rd = state->decoded->rm*state->decoded->rs+state->decoded->rn
+	state->decoded->rd = state->decoded->rm*state->decoded->rs + state->decoded->rn;
      /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-    state->decoded->rd = state->decoded->rm*state->decoded->rs
+	state->decoded->rd = state->decoded->rm*state->decoded->rs;
     /*Rd = Rm * Rs;*/
   }
 
   if (state->decoded->isS) {
-    int N = (Rd >> 31) & 1;
-    state->registers[CPSR][31] = N
-    if (!Rd) {
+    int N = (state->decoded->rd >> 31) & 1;
+	N = N << 31;
+	uint32_t cpsr = state->registers[CPSR_REG];
+	if (N) {
+	  state->registers[CPSR_REG] = cpsr | N;
+	}
+	else {
+	  state->registers[CPSR_REG] = cpsr & N;
+	}
+
+	//state->registers[CPSR_REG][31] = N ;
+    if (!state->decoded->rd) {
       int Z = 1;
-      state->registers[CPSR][30] = Z
+	  Z = Z << 30;
+	  cpsr = state->registers[CPSR_REG];
+	  state->registers[CPSR_REG] = cpsr | Z;
     }
   }
 
@@ -375,9 +386,14 @@ void execute(state_t* state, int instrNumber) {
        //i put the operand as int* since we need to analyze the sub-bits of it
        //in executeDataProcessing
                break;
+<<<<<<< HEAD
 
       case 1 : executeMultiply(instr[21], instr[20], toDecimal(&instr[16], 4),
       toDecimal(&instr[12], 4), toDecimal(&instr[8], 4), toDecimal(&instr[0], 4));
+=======
+      
+      case 1 : executeMultiply(state);
+>>>>>>> 5e9fc0c0f2418aa08f8c992935735191eb47d7d3
                break;
       /* case 1 : executeMultiply(state);
                   break; */
