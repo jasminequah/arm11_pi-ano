@@ -135,7 +135,7 @@ uint32_t rotateRight(uint32_t n, int d) {
 }
 
 void executeDataProcessing(state_t *state) {
-
+  printf("hello");
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
 
@@ -367,7 +367,7 @@ void executeBranch(state_t* state) {
 int checkCond(state_t* state, cond_t cond) {
   decoded_t* decoded = state->decoded;
   uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
-  return flags & decoded->cond;
+  return (flags == decoded->cond || decoded->cond == 14);
 }
 
 /* Executes calls to different functions if condition satisfied
@@ -378,7 +378,8 @@ void execute(state_t* state, int instrNumber) {
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
     switch (instrNumber) {
-      case 0 : executeDataProcessing(state);
+      case 0 : printf("dp\n");
+	       executeDataProcessing(state);
 	       break;
       /* case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
        toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]); */
@@ -386,22 +387,26 @@ void execute(state_t* state, int instrNumber) {
        //in executeDataProcessing
                break;
 
-      case 1 : executeMultiply(state);
+      case 1 : printf("mul\n");
+	       executeMultiply(state);
                break;
       /* case 1 : executeMultiply(state);
                   break; */
 
-      case 2 : executeSDT(state);
+      case 2 : printf("sdt\n");
+	       executeSDT(state);
 	       break;
       /* case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
         toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
               break; */
 
-      case 3 : executeBranch(state);
+      case 3 : printf("branch\n");
+	       executeBranch(state);
                break;
     }
+  } else {
+    printf("condition not satisfied\n");
   }
-
 }
 
 /* Decodes instruction and passes relevant arguments to execute
@@ -431,8 +436,9 @@ void decode(state_t* state) {
   if (!pc) {
     state->isTerminated = 1;
   } else {
-    int instrNum = getInstructionNum(pc);
+    instr_t instrNum = getInstructionNum(pc);
     decoded_t decoded;
+    printf("%d", instrNum);
     switch (instrNum) {
 
       case(BRANCH) :
