@@ -1,4 +1,4 @@
-state->decoded->#include <stdlib.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
@@ -25,11 +25,11 @@ state->decoded->#include <stdlib.h>
 
 /* flags */
 typedef enum {
-  V_BIT;
-  C_BIT;
-  Z_BIT;
-  N_BIT;
-} flags_t
+  V_BIT,
+  C_BIT,
+  Z_BIT,
+  N_BIT
+} flags_t;
 
 /* instructions */
 typedef enum {
@@ -382,7 +382,7 @@ int checkCond(state_t *state, cond_t cond) {
   // return (flags == decoded->cond || decoded->cond == 14);
   int N = getFlag(cond, N_BIT);
   int Z = getFlag(cond, Z_BIT);
-  int C = getFlag(cond, C_BIT);
+  // int C = getFlag(cond, C_BIT); not needed
   int V = getFlag(cond, V_BIT);
 
   switch(cond) {
@@ -401,7 +401,6 @@ int checkCond(state_t *state, cond_t cond) {
     case LE:
       return Z | (N != V);
   }
-
   return 0;
 }
 
@@ -412,7 +411,7 @@ int checkCond(state_t *state, cond_t cond) {
 void execute(state_t *state, instr_t instruction) {
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
-    switch (instrNumber) {
+    switch (instruction) {
       case DATA_PROCESSING:
         printf("dp\n");
 	      executeDataProcessing(state);
@@ -479,7 +478,7 @@ void decode(state_t *state) {
     switch (instrNum) {
 
       case(BRANCH) :
-        decoded.offset = (pc << 8) >> 8;
+        state->decoded->offset = (pc << 8) >> 8;
         state->decoded->cond   = (cond_t) pc >> 28;
         // state->decoded = &decoded;
         execute(state, BRANCH);
@@ -516,7 +515,7 @@ void decode(state_t *state) {
         state->decoded->rd       = (pc << 12) >> 28;
         state->decoded->rn       = (pc << 16) >> 28;
         state->decoded->rs       = (pc << 20) >> 28;
-        decoded.rm       = (pc << 28) >> 28;
+        state->decoded->rm       = (pc << 28) >> 28;
         // state->decoded   = &decoded;
         execute(state, MULTIPLY);
         break;
