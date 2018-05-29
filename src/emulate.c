@@ -148,18 +148,19 @@ void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
 
- // uint32_t fstOperand = registers[decoded->rn];
+  uint32_t operand1 = registers[decoded->rn];
+  uint32_t operand2;
 
   // Operand 2 is an immediate value
   if(decoded->isI) {
     unsigned Imm = decoded->operand2 & 0xFF;
-    uint32_t value = (uint32_t) Imm;
+    uint32_t operand2 = (uint32_t) Imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
-    value = rotateRight(value, shiftAmount);
+    operand2 = rotateRight(operand2, shiftAmount);
   }
   // Operand 2 is a register
   else {
-    uint32_t value = registers[decoded->rm];
+    uint32_t operand2 = registers[decoded->rm];
 
 
     int bit4 = decoded->operand2 & 0x10;
@@ -179,19 +180,19 @@ void executeDataProcessing(state_t *state) {
     switch(shiftType) {
       case LSL:
         //logical left
-        value = logicalLeft(value, shiftAmount);
+        operand2 = logicalLeft(operand2, shiftAmount);
         break;
       case LSR:
         //logical right
-        value = logicalRight(value, shiftAmount);
+        operand2 = logicalRight(operand2, shiftAmount);
         break;
       case ASR:
         //arithmetic right
-        value = arithmeticRight(value, shiftAmount);
+        operand2 = arithmeticRight(operand2, shiftAmount);
         break;
       case ROR:
         //rotate right
-        value = rotateRight(value, shiftAmount);
+        operand2 = rotateRight(operand2, shiftAmount);
         break;
     }
 
@@ -421,7 +422,7 @@ uint32_t getInstruction(state_t *state) {
 
 void decode(state_t* state) {
   uint32_t pc = getInstruction(state);
-  if (!pc) {
+  if (pc == 0) {
     state->isTerminated = 1;
   } else if (pc & BRANCH_MASK) {
     decoded_t decoded;
@@ -429,17 +430,16 @@ void decode(state_t* state) {
     decoded.cond   = (cond_t) ((int) (pc >> 28));
     state->decoded = &decoded;
     execute(state, (int) BRANCH);
-  } else if (pc & MULT_MASK) {
-    decoded_t decoded;
-    decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isA      = pc & 0x00200000u;
-    decoded.isS      = pc & 0x00100000u;
-    decoded.rd       = (pc << 12) >> 28;
-    decoded.rn       = (pc << 16) >> 28;
-    decoded.rs       = (pc << 20) >> 28;
-    decoded.rm       = (pc << 28) >> 28;
-    state->decoded   = &decoded;
-    execute(state, (int) MULTIPLY);
+  }
+  else if (pc & DATA_MASK) {
+	  decoded_t decoded;
+	  decoded.cond = (cond_t)((int)(pc >> 28));
+	  decoded.isI = pc & 0x02000000u;
+	  decoded.isS = pc & 0x00100000u;
+	  decoded.opCode = (opCode_t)((int)(pc << 7) >> 28);
+	  decoded.operand2 = (uint16_t)pc;
+	  state->decoded = &decoded;
+	  execute(state, (int)DATA_PROCESSING);
   } else if (pc & SD_MASK) {
     decoded_t decoded;
     decoded.cond     = (cond_t) ((int) (pc >> 28));
@@ -452,16 +452,18 @@ void decode(state_t* state) {
     decoded.offset   = (pc << 20) >> 20;
     state->decoded   = &decoded;
     execute(state, (int) SINGLE_DATA_TRANSFER);
-  } else if (pc & DATA_MASK) {
+  } else if (pc & MULT_MASK) {
     decoded_t decoded;
     decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isI      = pc & 0x02000000u;
+    decoded.isA      = pc & 0x00200000u;
     decoded.isS      = pc & 0x00100000u;
-    decoded.opCode   = (opCode_t) ((int) (pc << 7) >> 28);
-    decoded.operand2 = (uint16_t) pc;
+    decoded.rd       = (pc << 12) >> 28;
+    decoded.rn       = (pc << 16) >> 28;
+    decoded.rs       = (pc << 20) >> 28;
+    decoded.rm       = (pc << 28) >> 28;
     state->decoded   = &decoded;
-    execute(state, (int) DATA_PROCESSING);
-  } else {
+    execute(state, (int) MULTIPLY);
+	} else {
     fprintf(stderr, "Unrecognised instruction.\n");
     // TODO: Exit failure
     return;
@@ -515,7 +517,7 @@ void readBinary(state_t *state, char* fileName) {
 
 int main(int argc, char* argv[]) { // binary filename as sole argument
 
-  assert (argc == 2);
+  //assert (argc == 2);
 
   // initialise system to default state
   state_t state = {{0}, {0}, 0, 0};
@@ -524,7 +526,7 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state.isTerminated) {
-    state.registers[PC_REG] += 0x4u;
+    //state.registers[PC_REG] += 0x4u;
 
     if (state.registers[PC_REG] > 0x10000u) {
       fprintf(stderr, "Attempt to execute an undefined with address greater than 65536.\n");
@@ -532,6 +534,7 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
     } else {
       decode(&state);
     }
+	state.registers[PC_REG] += 0x4u;
   }
 
   printState(&state);
