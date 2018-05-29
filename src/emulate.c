@@ -469,7 +469,7 @@ void printState(state_t *state) {
 
   printf("Non-zero memory:");
   uint8_t i = 0;
-  while (i < sizeof(state->memory) / 4) {
+  while (i < (uint8_t) (sizeof(state->memory) / 4)) {
     if (state->memory[i] == 0) {
       break;
     } else {
