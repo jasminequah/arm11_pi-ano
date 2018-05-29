@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 
 #define BITS_IN_WORD 32
 
@@ -92,7 +93,6 @@ Holds the state of the emulator.
 typedef struct arm_state {
   uint32_t registers[17];
   uint8_t memory[65536];
-  // I changed this from uint8_t to uint32_t - I think each memory location should hold uint32_t since we want each to have 4 bytes? - Jasmine
 
   decoded_t *decoded;
 
@@ -134,9 +134,8 @@ uint32_t arithmeticRight(uint32_t n, int d) {
   return (uint32_t) temp;
 }
 
-// TODO: Define rotation
 uint32_t rotateRight(uint32_t n, int d) {
-  return (n >> d) | (n << (BITS_IN_WORD) - rotation);
+  return (n >> d) | (n << ((BITS_IN_WORD) - d));
 }
 
 void executeDataProcessing(state_t *state) {
@@ -144,29 +143,30 @@ void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
 
-  uint32_t fstOperand = registers[decoded->rn];
+ // uint32_t fstOperand = registers[decoded->rn];
 
-  uint32_t operand2;
   // Operand 2 is an immediate value
   if(decoded->isI) {
     unsigned Imm = decoded->operand2 & 0xFF;
-    operand2 = (uint32_t) Imm;
+    uint32_t value = (uint32_t) Imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
-    operand2 = rotateRight(operand2, shiftAmount);
+    value = rotateRight(value, shiftAmount);
   }
   // Operand 2 is a register
   else {
-    operand2 = registers[decoded->rm];
+    uint32_t value = registers[decoded->rm];
+
 
     int bit4 = decoded->operand2 & 0x10;
+    int shiftAmount;
 
     // bit 4 == 1, then shift specified by a register (optional)
     if(bit4) {
-      int shiftAmount = registers[decoded->rs] & 0xFF;
+      shiftAmount = registers[decoded->rs] & 0xFF;
     }
     // bit 4 == 0, then shift by a constant amount
     else {
-      int shiftAmount = (decoded->operand2 & 0xF800) >> 7;
+      shiftAmount = (decoded->operand2 & 0xF800) >> 7;
     }
 
     shiftType_t shiftType = (decoded->operand2 & 0x60) >> 5;
@@ -174,19 +174,19 @@ void executeDataProcessing(state_t *state) {
     switch(shiftType) {
       case LSL:
         //logical left
-        operand2 = logicalLeft(operand2, shiftAmount);
+        value = logicalLeft(value, shiftAmount);
         break;
       case LSR:
         //logical right
-        operand2 = logicalRight(operand2, shiftAmount);
+        value = logicalRight(value, shiftAmount);
         break;
       case ASR:
         //arithmetic right
-        operand2 = arithmeticRight(operand2, shiftAmount);
+        value = arithmeticRight(value, shiftAmount);
         break;
       case ROR:
         //rotate right
-        operand2 = rotateRight(operand2, shiftAmount);
+        value = rotateRight(value, shiftAmount);
         break;
     }
 
@@ -272,11 +272,11 @@ void executeMultiply(state_t *state) {
 
 }
 
-void executeSDT(state_t state) {
+void executeSDT(state_t *state) {
 //TODO: Check condition field before proceeding, and check all memory and reg references
-  decoded_t* decoded  = state.decoded;
-  uint32_t* registers = state.registers;
-  uint32_t* memory    = state.memory;
+  decoded_t* decoded  = state->decoded;
+  uint32_t* registers = state->registers;
+  uint8_t* memory    = state->memory;
 
   uint32_t immOffset = registers[(decoded->offset) & 0x000F]; //= value in Rn (CHECK)
   if (decoded->isI) {
@@ -392,7 +392,7 @@ void execute(state_t* state, int instrNumber) {
       /* case 1 : executeMultiply(state);
                   break; */
 
-      case 2 : executeSDT(*state);
+      case 2 : executeSDT(state);
 	       break;
       /* case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
         toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
@@ -468,7 +468,6 @@ void printState(state_t *state) {
   printf("CPSR : %d (0x%x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
 
   printf("Non-zero memory:");
-<<<<<<< Updated upstream
   uint8_t i = 0;
   while (i < sizeof(state->memory) / 4) {
     if (state->memory[i] == 0) {
@@ -476,26 +475,18 @@ void printState(state_t *state) {
     } else {
       printf("0x%x: 0x%x%x%x%x", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
       i += 4;
-=======
-  uint32_t i = 0;
-  while (i < sizeof(state.memory)) {
-    if (state.memory[i] == 0) {
-      break;
-    } else {
-      printf("0x%x: 0x%x", i, state.memory[i]);
->>>>>>> Stashed changes
     }
   }
 }
 
 /* Reads input file and puts it somewhere ... */
-int readBinary(state_t *state, char* fileName) {
+void readBinary(state_t *state, char* fileName) {
 
   FILE *fptr;
   fptr = fopen(fileName, "rb"); // open files
 
   fseek(fptr, 0, SEEK_END);
-  int fileLen = ftell(file);
+  int fileLen = ftell(fptr);
   fseek(fptr, 0, SEEK_SET);
 
   uint8_t *memPtr = &(state->memory[0]);
@@ -507,7 +498,7 @@ int readBinary(state_t *state, char* fileName) {
     memPtr += 4;
   }
 
-  close(fptr);
+  fclose(fptr);
 
 }
 
@@ -520,14 +511,6 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
   state_t state = {{0}, {0}, 0, 0};
 
   readBinary(&state, argv[1]);
-
-
-
-
-
-  // TODO: Load instructions into memory locations
-
-
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state.isTerminated) {
