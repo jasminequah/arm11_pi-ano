@@ -1,4 +1,4 @@
-#include <stdlib.h>
+state->decoded->#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
@@ -22,6 +22,14 @@
 #define LAST_4_BITS 0x000F
 #define FIRST_4_BITS 0xF00
 #define LAST_BYTE 0xFF
+
+/* flags */
+typedef enum {
+  V_BIT;
+  C_BIT;
+  Z_BIT;
+  N_BIT;
+} flags_t
 
 /* instructions */
 typedef enum {
@@ -364,45 +372,75 @@ void executeBranch(state_t *state) {
  * Shifts CPSR register right so can compare bits 28-31
  * Returns 0 or 1 accordingly */
 
+int getFlag(cond_t cond, flags_t flag) {
+  return ((int) cond >> (int) flag) & 0x1;
+}
+
 int checkCond(state_t *state, cond_t cond) {
-  decoded_t* decoded = state->decoded;
-  uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
-  return (flags == decoded->cond || decoded->cond == 14);
+  // decoded_t* decoded = state->decoded;
+  // uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
+  // return (flags == decoded->cond || decoded->cond == 14);
+  int N = getFlag(cond, N_BIT);
+  int Z = getFlag(cond, Z_BIT);
+  int C = getFlag(cond, C_BIT);
+  int V = getFlag(cond, V_BIT);
+
+  switch(cond) {
+    case AL:
+      return 1;
+    case EQ:
+      return Z;
+    case NE:
+      return !Z;
+    case GE:
+      return N == V;
+    case LT:
+      return N != V;
+    case GT:
+      return !Z & (N == V);
+    case LE:
+      return Z | (N != V);
+  }
+
+  return 0;
 }
 
 /* Executes calls to different functions if condition satisfied
  * Function called depends on which of 4 instructions it is executing
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
-void execute(state_t *state, int instrNumber) {
+void execute(state_t *state, instr_t instruction) {
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
     switch (instrNumber) {
-      case 0 : printf("dp\n");
-	       executeDataProcessing(state);
-	       break;
+      case DATA_PROCESSING:
+        printf("dp\n");
+	      executeDataProcessing(state);
+	      break;
       /* case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
        toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]); */
        //i put the operand as int* since we need to analyze the sub-bits of it
        //in executeDataProcessing
-               break;
 
-      case 1 : printf("mul\n");
-	       executeMultiply(state);
-               break;
+      case MULTIPLY:
+        printf("mul\n");
+	      executeMultiply(state);
+        break;
       /* case 1 : executeMultiply(state);
                   break; */
 
-      case 2 : printf("sdt\n");
-	       executeSDT(state);
-	       break;
+      case SINGLE_DATA_TRANSFER:
+        printf("sdt\n");
+	      executeSDT(state);
+	      break;
       /* case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
         toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
               break; */
 
-      case 3 : printf("branch\n");
-	       executeBranch(state);
-               break;
+      case BRANCH:
+        printf("branch\n");
+	      executeBranch(state);
+        break;
     }
   } else {
     printf("condition not satisfied\n");
@@ -415,7 +453,6 @@ void execute(state_t *state, int instrNumber) {
 
 uint32_t getInstruction(state_t *state) {
   return state->memory[state->registers[PC_REG]];
-  //uint32_t byte =
 }
 
 instr_t getInstructionNum(uint32_t pc) {
@@ -437,51 +474,51 @@ void decode(state_t *state) {
     state->isTerminated = 1;
   } else {
     instr_t instrNum = getInstructionNum(pc);
-    decoded_t decoded;
+    // decoded_t decoded;
     printf("%d", instrNum);
     switch (instrNum) {
 
       case(BRANCH) :
         decoded.offset = (pc << 8) >> 8;
-        decoded.cond   = (cond_t) ((int) (pc >> 28));
-        state->decoded = &decoded;
-        execute(state, (int) BRANCH);
+        state->decoded->cond   = (cond_t) pc >> 28;
+        // state->decoded = &decoded;
+        execute(state, BRANCH);
         break;
 
       case(DATA_PROCESSING) :
         printf("I'm in data processing \n");
-        decoded.cond = (cond_t)((int)(pc >> 28));
-        decoded.isI = pc & 0x02000000u;
-        decoded.isS = pc & 0x00100000u;
-        decoded.opCode = (opCode_t)((int)(pc << 7) >> 28);
-        decoded.operand2 = (uint16_t)pc;
-        state->decoded = &decoded;
-        execute(state, (int)DATA_PROCESSING);
+        state->decoded->cond = (cond_t) pc >> 28;
+        state->decoded->isI = pc & 0x02000000u;
+        state->decoded->isS = pc & 0x00100000u;
+        state->decoded->opCode = (opCode_t)((int)(pc << 7) >> 28);
+        state->decoded->operand2 = (uint16_t)pc;
+        // state->decoded = &decoded;
+        execute(state, DATA_PROCESSING);
         break;
 
       case(SINGLE_DATA_TRANSFER) :
-        decoded.cond     = (cond_t) ((int) (pc >> 28));
-        decoded.isI      = pc & 0x02000000u;
-        decoded.isP      = pc & 0x01000000u;
-        decoded.isU      = pc & 0x00800000u;
-        decoded.isL      = pc & 0x00100000u;
-        decoded.rn       = (pc << 12) >> 28;
-        decoded.rd       = (pc << 16) >> 28;
-        decoded.offset   = (pc << 20) >> 20;
-        state->decoded   = &decoded;
-        execute(state, (int) SINGLE_DATA_TRANSFER);
+        state->decoded->cond     = (cond_t) pc >> 28;
+        state->decoded->isI      = pc & 0x02000000u;
+        state->decoded->isP      = pc & 0x01000000u;
+        state->decoded->isU      = pc & 0x00800000u;
+        state->decoded->isL      = pc & 0x00100000u;
+        state->decoded->rn       = (pc << 12) >> 28;
+        state->decoded->rd       = (pc << 16) >> 28;
+        state->decoded->offset   = (pc << 20) >> 20;
+        // state->decoded   = &decoded;
+        execute(state, SINGLE_DATA_TRANSFER);
         break;
 
       case(MULTIPLY) :
-        decoded.cond     = (cond_t) ((int) (pc >> 28));
-        decoded.isA      = pc & 0x00200000u;
-        decoded.isS      = pc & 0x00100000u;
-        decoded.rd       = (pc << 12) >> 28;
-        decoded.rn       = (pc << 16) >> 28;
-        decoded.rs       = (pc << 20) >> 28;
+        state->decoded->cond     = (cond_t) pc >> 28;
+        state->decoded->isA      = pc & 0x00200000u;
+        state->decoded->isS      = pc & 0x00100000u;
+        state->decoded->rd       = (pc << 12) >> 28;
+        state->decoded->rn       = (pc << 16) >> 28;
+        state->decoded->rs       = (pc << 20) >> 28;
         decoded.rm       = (pc << 28) >> 28;
-        state->decoded   = &decoded;
-        execute(state, (int) MULTIPLY);
+        // state->decoded   = &decoded;
+        execute(state, MULTIPLY);
         break;
       }
   }
