@@ -240,23 +240,22 @@ void executeDataProcessing(state_t *state) {
 
 }
 
-void executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
-  /*if (state->decoded->isA == 1)*/
-  if (A) {
-     /*state->decoded->rd = state->decoded->rm*state->decoded->rs+state->decoded->rn*/
-     Rd = (Rm * Rs) + Rn;
+void executeMultiply(state_t *state) {
+  if (state->decoded->isA == 1) {
+     state->decoded->rd = state->decoded->rm*state->decoded->rs+state->decoded->rn
+     /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-    /*state->decoded->rd = state->decoded->rm*state->decoded->rs*/
-    Rd = Rm * Rs;
+    state->decoded->rd = state->decoded->rm*state->decoded->rs
+    /*Rd = Rm * Rs;*/
   }
-  /*if(state->decoded->isS)*/
-  if (S) {
+  
+  if (state->decoded->isS) {
     int N = (Rd >> 31) & 1;
-    /*state->registers[CPSR][31] = N*/
+    state->registers[CPSR][31] = N
     if (!Rd) {
       int Z = 1;
-      /*state->registers[CPSR][30] = Z*/
+      state->registers[CPSR][30] = Z
     }
   }
 
