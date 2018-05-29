@@ -203,25 +203,21 @@ void executeDataProcessing(state_t *state) {
       result = (uint32_t) ((int) operand1 - (int) operand2);
     case RSB:
       result = (uint32_t) ((int) operand2 - (int) operand1);
-      break;
     case ADD:
       result = (uint32_t) ((int) operand1 + (int) operand2);
-      break;
     case TST:
 
-      break;
     case TEQ:
 
-      break;
     case CMP:
 
-      break;
+
     case ORR:
       result = operand1 | operand2;
-      break;
+
     case MOV:
       result = operand2;
-      break;
+
     default:
       registers[decoded->rd] = result;
   }
