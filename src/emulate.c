@@ -502,7 +502,7 @@ void printState(state_t *state) {
     if (state->memory[i] == 0) {
       break;
     } else {
-      printf("0x%x: 0x%x%x%x%x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
+      printf("0x%x: 0x%02x%02x%02x%02x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
       i += 4;
     }
   }
