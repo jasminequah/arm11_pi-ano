@@ -407,53 +407,70 @@ uint32_t getInstruction(state_t *state) {
   //uint32_t byte =
 }
 
+instr_t getInstructionNum(uint32_t pc) {
+
+  if ((pc << 4) >> 28 == 0xa) {
+    return BRANCH;
+  } else if ((pc << 4) >> 30 == 1) {
+    return SINGLE_DATA_TRANSFER;
+  } else if ((pc << 6) >> 31 == 0 && (pc << 24) >> 28 == 9) {
+    return MULTIPLY;
+  } else {
+    return DATA_PROCESSING;
+  }
+}	
+
 void decode(state_t* state) {
   uint32_t pc = getInstruction(state);
   if (!pc) {
     state->isTerminated = 1;
-  } else if (pc & BRANCH_MASK) {
-    decoded_t decoded;
-    decoded.offset = (pc << 8) >> 8;
-    decoded.cond   = (cond_t) ((int) (pc >> 28));
-    state->decoded = &decoded;
-    execute(state, (int) BRANCH);
-  }
-  else if (pc & DATA_MASK) {
-    decoded_t decoded;
-    decoded.cond = (cond_t)((int)(pc >> 28));
-    decoded.isI = pc & 0x02000000u;
-    decoded.isS = pc & 0x00100000u;
-    decoded.opCode = (opCode_t)((int)(pc << 7) >> 28);
-    decoded.operand2 = (uint16_t)pc;
-    state->decoded = &decoded;
-    execute(state, (int)DATA_PROCESSING);
-  } else if (pc & SD_MASK) {
-    decoded_t decoded;
-    decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isI      = pc & 0x02000000u;
-    decoded.isP      = pc & 0x01000000u;
-    decoded.isU      = pc & 0x00800000u;
-    decoded.isL      = pc & 0x00100000u;
-    decoded.rn       = (pc << 12) >> 28;
-    decoded.rd       = (pc << 16) >> 28;
-    decoded.offset   = (pc << 20) >> 20;
-    state->decoded   = &decoded;
-    execute(state, (int) SINGLE_DATA_TRANSFER);
-  } else if (pc & MULT_MASK) {
-    decoded_t decoded;
-    decoded.cond     = (cond_t) ((int) (pc >> 28));
-    decoded.isA      = pc & 0x00200000u;
-    decoded.isS      = pc & 0x00100000u;
-    decoded.rd       = (pc << 12) >> 28;
-    decoded.rn       = (pc << 16) >> 28;
-    decoded.rs       = (pc << 20) >> 28;
-    decoded.rm       = (pc << 28) >> 28;
-    state->decoded   = &decoded;
-    execute(state, (int) MULTIPLY);
   } else {
-    fprintf(stderr, "Unrecognised instruction.\n");
-    // TODO: Exit failure
-    return;
+    int instrNum = getInstructionNum(pc);
+    decoded_t decoded;
+    switch (instrNum) {
+
+      case(BRANCH) : 
+        decoded.offset = (pc << 8) >> 8;
+        decoded.cond   = (cond_t) ((int) (pc >> 28));
+        state->decoded = &decoded;
+        execute(state, (int) BRANCH);
+        break;
+
+      case(DATA_PROCESSING) :
+        decoded.cond = (cond_t)((int)(pc >> 28));
+        decoded.isI = pc & 0x02000000u;
+        decoded.isS = pc & 0x00100000u;
+        decoded.opCode = (opCode_t)((int)(pc << 7) >> 28);
+        decoded.operand2 = (uint16_t)pc;
+        state->decoded = &decoded;
+        execute(state, (int)DATA_PROCESSING);
+        break;
+
+      case(SINGLE_DATA_TRANSFER) :
+        decoded.cond     = (cond_t) ((int) (pc >> 28));
+        decoded.isI      = pc & 0x02000000u;
+        decoded.isP      = pc & 0x01000000u;
+        decoded.isU      = pc & 0x00800000u;
+        decoded.isL      = pc & 0x00100000u;
+        decoded.rn       = (pc << 12) >> 28;
+        decoded.rd       = (pc << 16) >> 28;
+        decoded.offset   = (pc << 20) >> 20;
+        state->decoded   = &decoded;
+        execute(state, (int) SINGLE_DATA_TRANSFER);
+        break;
+
+      case(MULTIPLY) : 
+        decoded.cond     = (cond_t) ((int) (pc >> 28));
+        decoded.isA      = pc & 0x00200000u;
+        decoded.isS      = pc & 0x00100000u;
+        decoded.rd       = (pc << 12) >> 28;
+        decoded.rn       = (pc << 16) >> 28;
+        decoded.rs       = (pc << 20) >> 28;
+        decoded.rm       = (pc << 28) >> 28;
+        state->decoded   = &decoded;
+        execute(state, (int) MULTIPLY);
+        break;
+      }
   }
 }
 
