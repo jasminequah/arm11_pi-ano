@@ -69,15 +69,11 @@ typedef struct arm_decoded {
   int isL;
 
   /* register number [0 - 16] */
-  // Only need 4 bits not 32?
-  // yeah we only need 5 (not 4) bits, i think we can maybe change this to type int instead of uint32_t.
   int rn;
   int rd;
   int rs;
   int rm;
   uint32_t offset;
-  /* offset taken from bits 0-23 and extended to 32 bits */
-  /* For different instructions some of these aren't used - might be a bit inefficient */
 
   opCode_t opCode;
   uint16_t operand2;
@@ -95,7 +91,8 @@ Holds the state of the emulator.
 
 typedef struct arm_state {
   uint32_t registers[17];
-  uint8_t memory[65536];
+  uint32_t memory[65536];
+  // I changed this from uint8_t to uint32_t - I think each memory location should hold uint32_t since we want each to have 4 bytes? - Jasmine
 
   decoded_t *decoded;
 
@@ -115,11 +112,6 @@ void readInstructions(char instructions[]) {
   //Read instructions from input file into instruction array representing memory
 
 }
-
-void fetch(int* pcReg, char instructions[]) {
-  //Fetch (loads PC), passes to decode
-}
-
 
 //not sure if this is needed. - chris
 int binToDecimal(unsigned binary, int size) {
@@ -155,7 +147,7 @@ void executeDataProcessing(state_t *state) {
   uint32_t fstOperand = registers[decoded->rn];
 
   // Operand 2 is an immediate value
-  if(decoded.isI) {
+  if(decoded->isI) {
     unsigned Imm = decoded->operand2 & 0xFF;
     uint32_t value = (uint32_t) Imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
@@ -249,41 +241,41 @@ void executeDataProcessing(state_t *state) {
 }
 
 void executeMultiply(int A, int S, int Rd, int Rn, int Rs, int Rm) {
-  /*if (state.decoded.isA == 1)*/
+  /*if (state->decoded->isA == 1)*/
   if (A) {
-	/*state.decoded.rd = state.decoded.rm*state.decoded.rs+state.decoded.rn*/
-	Rd = (Rm * Rs) + Rn;
+     /*state->decoded->rd = state->decoded->rm*state->decoded->rs+state->decoded->rn*/
+     Rd = (Rm * Rs) + Rn;
   }
   else {
-	/*state.decoded.rd = state.decoded.rm*state.decoded.rs*/
-	Rd = Rm * Rs;
+    /*state->decoded->rd = state->decoded->rm*state->decoded->rs*/
+    Rd = Rm * Rs;
   }
-  /*if(state.decoded.isS == 1)*/
+  /*if(state->decoded->isS)*/
   if (S) {
-	int N = (Rd >> 31) & 1;
-	/*state.registers[CPSR][31] = N*/
-	if (!Rd) {
-	  int Z = 1;
-	  /*state.registers[CPSR][30] = Z*/
-	}
+    int N = (Rd >> 31) & 1;
+    /*state->registers[CPSR][31] = N*/
+    if (!Rd) {
+      int Z = 1;
+      /*state->registers[CPSR][30] = Z*/
+    }
   }
 
 }
 
 void executeSDT(state_t state) {
 //TODO: Check condition field before proceeding, and check all memory and reg references
-  decoded_t* decoded = state->decoded;
-  uint32_t* registers = state->registers;
-  uint8_t* memory = state->memory;
+  decoded_t* decoded  = state.decoded;
+  uint32_t* registers = state.registers;
+  uint32_t* memory    = state.memory;
 
-  uint32_t immOffset = regsiters[(decoded->offset) & 0x000F]; //= value in Rn (CHECK)
-  if (decoded.isI) {
+  uint32_t immOffset = registers[(decoded->offset) & 0x000F]; //= value in Rn (CHECK)
+  if (decoded->isI) {
     int bit4 = (decoded->offset) & 0x10;
     int shiftAmount;
     if (bit4) {
       // bit 4 == 1, shift by value in Rs (the last byte)
-      shiftAmount = registers[((decoded->offset) & 0xF00) >> 8] & 0xFF //last byte of Rs?
-      int
+      shiftAmount = registers[((decoded->offset) & 0xF00) >> 8] & 0xFF; //last byte of Rs?
+      // int
     } else {
       //bit4 == 0, shift by integer
       shiftAmount = (decoded->offset & 0xF800) >> 7; // = integer we shift by
@@ -314,7 +306,7 @@ void executeSDT(state_t state) {
   }
 
   uint32_t newBase;
-  if (decoded.isU) {
+  if (decoded->isU) {
     //offset is added to the base reg
     newBase = registers[decoded->rn] + immOffset;
   } else {
@@ -323,9 +315,9 @@ void executeSDT(state_t state) {
     // note to self: decoded->rn or decoded.rn?
   }
 
-  if (decoded.isP) {
+  if (decoded->isP) {
     //pre-indexing : offset is +/- to the base reg before transferring data
-    if (decoded.isL) {
+    if (decoded->isL) {
       //word is loaded from memory
       registers[decoded->rd] = memory[newBase];
     } else {
@@ -336,7 +328,7 @@ void executeSDT(state_t state) {
 
   } else {
     //post-indexing : offset is +/- to the base reg after transferring
-    if (decoded.isL) {
+    if (decoded->isL) {
       //word is loaded from memory
       registers[decoded->rd] = memory[decoded->rn];
     } else {
@@ -350,10 +342,10 @@ void executeSDT(state_t state) {
 
 /* Branch Instruction:
  * Adds offset from bits 0 to 23 of decoded instruction to PC */
-void executeBranch(state_t state) {
-  decoded_t* decoded = state.decoded;
+void executeBranch(state_t* state) {
+  decoded_t* decoded = state->decoded;
   /* Need to check if will overflow or assume it won't? */
-  state.registers[PC_REG] += decoded->offset;
+  state->registers[PC_REG] += decoded->offset;
 }
 
 /* Restructure to put execute functions in different files for better readability */
@@ -363,9 +355,9 @@ void executeBranch(state_t state) {
  * Shifts CPSR register right so can compare bits 28-31
  * Returns 0 or 1 accordingly */
 
-int checkCond(state_t state, cond_t cond) {
-  decoded_t* decoded = state.decoded;
-  uint32_t flags = logicalRight(state.registers[CPSR_REG], 28);
+int checkCond(state_t* state, cond_t cond) {
+  decoded_t* decoded = state->decoded;
+  uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
   return flags & decoded->cond;
 }
 
@@ -373,23 +365,32 @@ int checkCond(state_t state, cond_t cond) {
  * Function called depends on which of 4 instructions it is executing
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
-void execute(state_t state, int instrNumber) {
+void execute(state_t* state, int instrNumber) {
   //If cond not satisfied may still want to check if all 0 instruction encountered?
-  if (state.decoded->cond) {
+  if (checkCond(state, state->decoded->cond)) {
     switch (instrNumber) {
-      case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
-       toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
+      case 0 : executeDataProcessing(state);
+	       break;
+      /* case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
+       toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]); */
        //i put the operand as int* since we need to analyze the sub-bits of it
        //in executeDataProcessing
-              break;
+               break;
+      
       case 1 : executeMultiply(instr[21], instr[20], toDecimal(&instr[16], 4),
       toDecimal(&instr[12], 4), toDecimal(&instr[8], 4), toDecimal(&instr[0], 4));
-              break;
-      case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
+               break;
+      /* case 1 : executeMultiply(state);
+                  break; */
+      
+      case 2 : executeSDT(*state);
+	       break;
+      /* case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
         toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
-              break;
+              break; */
+      
       case 3 : executeBranch(state);
-              break;
+               break;
     }
   }
 
@@ -399,15 +400,15 @@ void execute(state_t state, int instrNumber) {
  * execute(state, cond, instr, instrNumber)
  * Initialises required parts of decoded_t struct for that instruction */
 
-void decode(state_t state) {
-  uint32_t pc = state.registers[PC_REG];
+void decode(state_t* state) {
+  uint32_t pc = state->registers[PC_REG];
   if (!pc) {
-    // HALT
+    state->isTerminated = 1;
   } else if (pc & BRANCH_MASK) {
     decoded_t decoded;
     decoded.offset = (pc << 8) >> 8;
     decoded.cond   = (cond_t) ((int) (pc >> 28));
-    state.decoded  = &decoded;
+    state->decoded = &decoded;
     execute(state, (int) BRANCH);
   } else if (pc & MULT_MASK) {
     decoded_t decoded;
@@ -418,7 +419,7 @@ void decode(state_t state) {
     decoded.rn       = (pc << 16) >> 28;
     decoded.rs       = (pc << 20) >> 28;
     decoded.rm       = (pc << 28) >> 28;
-    state.decoded    = &decoded;
+    state->decoded   = &decoded;
     execute(state, (int) MULTIPLY);
   } else if (pc & SD_MASK) {
     decoded_t decoded;
@@ -430,7 +431,7 @@ void decode(state_t state) {
     decoded.rn       = (pc << 12) >> 28;
     decoded.rd       = (pc << 16) >> 28;
     decoded.offset   = (pc << 20) >> 20;
-    state.decoded    = &decoded;
+    state->decoded   = &decoded;
     execute(state, (int) SINGLE_DATA_TRANSFER);
   } else if (pc & DATA_MASK) {
     decoded_t decoded;
@@ -439,28 +440,33 @@ void decode(state_t state) {
     decoded.isS      = pc & 0x00100000u;
     decoded.opCode   = (opCode_t) ((int) (pc << 7) >> 28);
     decoded.operand2 = (uint16_t) pc;
-    state.decoded    = &decoded;
+    state->decoded   = &decoded;
     execute(state, (int) DATA_PROCESSING);
   } else {
-    //Unknown instruction, throw an error
+    fprintf(stderr, "Unrecognised instruction.\n");
+    // TODO: Exit failure
+    return;
   }
 }
 
-/* Prints value of each register to file */
-void printRegisters((int*) registers[]) {
+/* Prints values of registers and non-zero memory to file */
+void printState(state_t state) {
   printf("Registers:\n");
-  for (int i = 0; i < s; i++) {
-    printf("$%d : %d (%p)\n", i, *registers[i], registers[i]);
+  for (int i = 0; i < 13; i++) {
+    printf("$%d : %d (0x%x)\n", i, state.registers[i], state.registers[i]);
   }
-  printf("PC : %d (%p)\n", *registers[15], registers[15]);
-  printf("CPSR : %d (%p)\n", *registers[16], registers[16]);
-
-}
-
-/* Prints value of non-zero memory */
-void printMemory(void) {
-  printf("Non-zero memory:\n");
-
+  printf("PC : %d (0x%x)\n", state.registers[PC_REG], state.registers[PC_REG]);
+  printf("CPSR : %d (0x%x)\n", state.registers[CPSR_REG], state.registers[CPSR_REG]);
+  
+  printf("Non-zero memory:");
+  uint32_t i = 0;
+  while (i < sizeof(state.memory)) {
+    if (state.memory[i] == 0) {
+      break;
+    } else {
+      printf("0x%x: 0x%x", i, state.memory[i]);
+    }
+  }
 }
 
 /* Reads input file and puts it somewhere ... */
@@ -470,24 +476,30 @@ int readBinary() {
 
 
 int main(int argc, char* argv[]) { // binary filename as sole argument
-
+  
   FILE *fptr;
-  fopen(argv[1], "rb"); // open files
+  fptr = fopen(argv[1], "rb"); // open files
 
+  /* Initalise system state to default state */
+  state_t state = {{0}, {0}, 0, 0};
 
-  //Need to get instruction file from main?
-  char instructions[]; //Read in instruction file
-  readInstructions(instructions);
+  // TODO: Load instructions into memory locations
 
-  (int*) registers[17]; //17 32-bit registers, store pointers of each register in array
-  //Or use C struct?
-  char cpsrReg[32];
-  registers[16] = &cpsrReg;
+  fclose(fptr);
 
-  //While still have instructions, pass to fetch function
+  /* Fetch: increments PC and passes state to decode part of pipeline */
+  while (!state.isTerminated) {
+    state.registers[PC_REG] += 0x4u;
 
-  printRegisters(registers);
-  printMemory();
+    if (state.registers[PC_REG] > 0x10000u) {
+      fprintf(stderr, "Attempt to execute an undefined with address greater than 65536.\n");
+      return EXIT_FAILURE;
+    } else {
+      decode(&state);
+    }
+  }
+
+  printState(state);
 
   return EXIT_SUCCESS;
 }
