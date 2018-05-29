@@ -409,8 +409,13 @@ void execute(state_t* state, int instrNumber) {
  * execute(state, cond, instr, instrNumber)
  * Initialises required parts of decoded_t struct for that instruction */
 
+uint32_t getInstruction(state_t *state) {
+  return state->memory[state->registers[PC_REG]];	  
+  //uint32_t byte = 
+}
+
 void decode(state_t* state) {
-  uint32_t pc = state->registers[PC_REG];
+  uint32_t pc = getInstruction(state);
   if (!pc) {
     state->isTerminated = 1;
   } else if (pc & BRANCH_MASK) {
