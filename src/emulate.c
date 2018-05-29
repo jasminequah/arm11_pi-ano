@@ -462,21 +462,19 @@ void decode(state_t* state) {
 void printState(state_t *state) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
-    printf("$%d : %d (0x%x)\n", i, state.registers[i], state.registers[i]);
+    printf("$%d : %d (0x%x)\n", i, state->registers[i], state->registers[i]);
   }
-  printf("PC : %d (0x%x)\n", state.registers[PC_REG], state.registers[PC_REG]);
-  printf("CPSR : %d (0x%x)\n", state.registers[CPSR_REG], state.registers[CPSR_REG]);
+  printf("PC : %d (0x%x)\n", state->registers[PC_REG], state->registers[PC_REG]);
+  printf("CPSR : %d (0x%x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
 
   printf("Non-zero memory:");
-  uint8_t *i = 0;
-  while (i < sizeof(state.memory) / 4) {
-    if (state.memory[i] == 0) {
+  uint8_t i = 0;
+  while (i < sizeof(state->memory) / 4) {
+    if (state->memory[i] == 0) {
       break;
     } else {
-      for (j = 3; j <= 0; j--) {
-        printf("0x%x: 0x%x", i, state.memory[i]);
-      }
-      printf("0x%x: 0x%x", i, state.memory[i]);
+      printf("0x%x: 0x%x%x%x%x", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
+      i += 4;
     }
   }
 }
@@ -507,7 +505,7 @@ void readBinary(state_t *state, char* fileName) {
 
 int main(int argc, char* argv[]) { // binary filename as sole argument
 
-  assert (argc2 == 2);
+  assert (argc == 2);
 
   // initialise system to default state
   state_t state = {{0}, {0}, 0, 0};
@@ -526,7 +524,7 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
     }
   }
 
-  printState(state);
+  printState(&state);
 
   return EXIT_SUCCESS;
 }
