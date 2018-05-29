@@ -114,16 +114,6 @@ typedef struct arm_state {
   Pipeline: Fetch, Decode, Execute - 3 instructions processed at once.
 */
 
-void readInstructions(char instructions[]) {
-  //Read instructions from input file into instruction array representing memory
-
-}
-
-//not sure if this is needed. - chris
-int binToDecimal(unsigned binary, int size) {
-  return 0;
-}
-
 // Methods for execute:
 
 uint32_t logicalLeft(uint32_t n, int d) {
@@ -155,13 +145,13 @@ void executeDataProcessing(state_t *state) {
   // Operand 2 is an immediate value
   if(decoded->isI) {
     unsigned Imm = decoded->operand2 & 0xFF;
-    uint32_t operand2 = (uint32_t) Imm;
+    operand2 = (uint32_t) Imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
     operand2 = rotateRight(operand2, shiftAmount);
   }
   // Operand 2 is a register
   else {
-    uint32_t operand2 = registers[decoded->rm];
+    operand2 = registers[decoded->rm];
 
 
     int bit4 = decoded->operand2 & 0x10;
@@ -281,7 +271,7 @@ void executeSDT(state_t *state) {
   uint32_t* registers = state->registers;
   uint8_t* memory    = state->memory;
 
-  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS; //= value in Rn (CHECK)
+  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
   if (decoded->isI) {
     int bit4 = (decoded->offset) & 0x10;
     int shiftAmount;
@@ -477,7 +467,7 @@ void printState(state_t *state) {
   printf("CPSR : %d (0x%x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
 
   printf("Non-zero memory:\n");
-  uint8_t i = 0;
+  uint16_t i = 0;
   while (i < MEMORY_SIZE / 4) {
     if (state->memory[i] == 0) {
       break;
