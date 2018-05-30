@@ -23,14 +23,21 @@
 #define LAST_4_BITS 0x000F
 #define FIRST_4_BITS 0xF00
 #define LAST_BYTE 0xFF
+#define FIRST_BIT 0x80000000
+
+/*Masks for CPSR_REG */
+#define Z_BIT 0x40000000
+#define N_BIT 0x80000000
+#define C_BIT 0x20000000
+#define V_BIT 0x10000000
 
 /* flags */
-typedef enum {
-  V_BIT,
-  C_BIT,
-  Z_BIT,
-  N_BIT
-} flags_t;
+// typedef enum {
+//   V_BIT,
+//   C_BIT,
+//   Z_BIT,
+//   N_BIT
+// } flags_t;
 
 /* instructions */
 typedef enum {
@@ -266,9 +273,22 @@ void executeDataProcessing(state_t *state) {
        C set to carry out of bit 31 of the ALU in arithmetic operation.
        C set to 1 if addition produced a carry (unsigned overflow).
        C set to 0 if subtraction produced a borrow, 1 otherwise.
-    3. Z is 0 if result is all zeroes.
-    4. N is set to logical value of bit 31
     */
+
+    if (result == 0) {
+      //Z is 1 if result is all zeroes.
+      registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
+    } else {
+      //Z is 0 is result is NOT all zeros (not sure if needed)
+      registers[CPSR_REG] = registers[CPSR_REG] & 0xBFFF;
+    }
+
+    if ((result & N_BIT) >> (BITS_IN_WORD - 1)) {
+      // 4. N is set to logical value of bit 31
+      registers[CPSR_REG] = registers[CPSR_REG] | N_BIT;
+    } else {
+      registers[CPSR_REG] = registers[CPSR_REG] & 0x7FFF;
+    }
   }
 
 }
