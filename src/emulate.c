@@ -20,9 +20,9 @@
 #define DATA_MASK   0x00000000u
 
 /* Masks for operations */
-#define LAST_4_BITS 0x000F
-#define FIRST_4_BITS 0xF00
-#define LAST_BYTE 0xFF
+#define LAST_4_BITS 0x00F  //only use for 12-bit offset
+#define FIRST_4_BITS 0xF00 //only use for 12-bit offset
+#define LAST_BYTE 0x000000FF
 #define FIRST_BIT 0x80000000
 
 /*Masks for CPSR_REG */
@@ -250,7 +250,7 @@ void executeDataProcessing(state_t *state) {
     }
   //TODO: check shift functions according to spec
   }
- 
+
   uint32_t result = 0;
   switch(decoded->opCode) {
     case AND:
