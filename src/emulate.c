@@ -184,11 +184,11 @@ int checkAddCarryOut(uint32_t a, uint32_t b) {
 
 int checkSubCarryOut(int a, int b) {
   if ((!(a & FIRST_BIT)) & (b & FIRST_BIT)) {
-    return ((a - b) & FIRST_BIT) == 0;
-  } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
     return ((a - b) & FIRST_BIT) != 0;
+  } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
+    return ((a - b) & FIRST_BIT) == 0;
   } else {
-    return 1;
+    return 0;
   }
 }
 
