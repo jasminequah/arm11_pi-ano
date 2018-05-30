@@ -174,17 +174,21 @@ uint32_t rotateRight(uint32_t n, int d) {
   return (n >> d) | (n << ((BITS_IN_WORD) - d));
 }
 
-int checkAddCarryOut(int a, int b) {
-  if ((a < 0) && (b < 0)) {
-    return (a + b > 0);
-  } else if ((a > 0) && (b > 0)) {
-    return (a + b < 0);
+int checkAddCarryOut(uint32_t a, uint32_t b) {
+  if ((a & FIRST_BIT) & (b & FIRST_BIT)) {
+    return ((a + b) & FIRST_BIT) == 0;
+  } else if (!(a & FIRST_BIT) & !(b & FIRST_BIT)) {
+    return ((a + b) & FIRST_BIT) != 0;
   }
   return 0;
 }
 
 int checkSubCarryOut(int a, int b) {
-  if ()
+  if (!(a & FIRST_BIT) & (b & FIRST_BIT)) {
+    return ((a - b) & FIRST_BIT) != 0;
+  } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
+    return ((a - b) & FIRST_BIT) == 0;
+  }
 }
 
 void executeDataProcessing(state_t *state) {
@@ -193,6 +197,8 @@ void executeDataProcessing(state_t *state) {
 
   uint32_t operand1 = registers[decoded->rn];
   uint32_t operand2;
+
+  int carryOut = 0;
 
   // Operand 2 is an immediate value
   if(decoded->isI) {
@@ -224,24 +230,27 @@ void executeDataProcessing(state_t *state) {
     switch(shiftType) {
       case LSL:
         //logical left
-        operand2 = logicalLeft(registers[operand2 & 0x00F], shiftAmount);
+        operand2 = logicalLeft(registers[decoded->rm], shiftAmount);
+        carryOut = (registers[decoded->rm] >> (BITS_IN_WORD - shiftAmount)) & 0x1;
         break;
       case LSR:
         //logical right
-        operand2 = logicalRight(registers[operand2 & 0x00F], shiftAmount);
+        operand2 = logicalRight(registers[decoded->rm], shiftAmount);
+        carryOut = (registers[decoded->rm] >> (shiftAmount - 1)) & 0x1;
         break;
       case ASR:
         //arithmetic right
-        operand2 = arithmeticRight(registers[operand2 & 0x00F], shiftAmount);
+        operand2 = arithmeticRight(registers[decoded->rm], shiftAmount);
+        carryOut = (registers[decoded->rm] >> (shiftAmount - 1)) & 0x1;
         break;
       case ROR:
         //rotate right
-        operand2 = rotateRight(registers[operand2 & 0x00F], shiftAmount);
+        operand2 = rotateRight(registers[decoded->rm], shiftAmount);
+        carryOut = (registers[decoded->rm] >> (shiftAmount - 1)) & 0x1;
         break;
     }
   //TODO: check shift functions according to spec
   }
-
   uint32_t result = 0;
   switch(decoded->opCode) {
     case AND:
@@ -252,20 +261,26 @@ void executeDataProcessing(state_t *state) {
       break;
     case SUB:
       result = operand1 - operand2;
+      carryOut = checkSubCarryOut(operand1, operand2);
       break;
     case RSB:
       result = operand2 - operand1;
+      carryOut = checkSubCarryOut(operand2, operand1);
       break;
     case ADD:
       result = operand1 + operand2;
+      carryOut = checkAddCarryOut(operand1, operand2);
       break;
     case TST:
+      result = registers[decoded->rd];
       break;
     case TEQ:
+      result = registers[decoded->rd];
       break;
     case CMP:
+      result = registers[decoded->rd];
+      carryOut = checkSubCarryOut(operand1, operand2);
       break;
-
     case ORR:
       result = operand1 | operand2;
       break;
@@ -289,6 +304,10 @@ void executeDataProcessing(state_t *state) {
        C set to 1 if addition produced a carry (unsigned overflow).
        C set to 0 if subtraction produced a borrow, 1 otherwise.
     */
+    if (carryOut == 1) {
+      //C is 1 if carry out is 1
+      registers[CPSR_REG] = registers[CPSR_REG] | C_BIT;
+    }
 
     if (result == 0) {
       //Z is 1 if result is all zeroes.
@@ -546,6 +565,7 @@ void decode(state_t *state) {
         state->decoded->opCode   = (opCode_t) ((pc << 7) >> 28);
         state->decoded->rn       = (pc << 12) >> 28;
         state->decoded->rd       = (pc << 16) >> 28;
+        state->decoded->rm       = (pc << 28) >> 28;
         state->decoded->operand2 = (uint16_t)pc;
         execute(state, DATA_PROCESSING);
         break;
