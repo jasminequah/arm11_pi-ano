@@ -275,31 +275,33 @@ void executeDataProcessing(state_t *state) {
 
 void executeMultiply(state_t *state) {
   if (state->decoded->isA == 1) {
-	state->decoded->rd = state->decoded->rm*state->decoded->rs + state->decoded->rn;
+	state->registers[state->decoded->rd] = state->registers[state->decoded->rm] *
+  state->registers[state->decoded->rs] + state->registers[state->decoded->rn];
      /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-	state->decoded->rd = state->decoded->rm*state->decoded->rs;
+	state->registers[state->decoded->rd] = state->registers[state->decoded->rm] *
+  state->registers[state->decoded->rs];
     /*Rd = Rm * Rs;*/
   }
 
   if (state->decoded->isS) {
     int N = (state->decoded->rd >> 31) & 1;
-	N = N << 31;
-	uint32_t cpsr = state->registers[CPSR_REG];
-	if (N) {
-	  state->registers[CPSR_REG] = cpsr | N;
-	}
-	else {
-	  state->registers[CPSR_REG] = cpsr & N;
-	}
+	  N = N << 31;
+	  uint32_t cpsr = state->registers[CPSR_REG];
+	  if (N) {
+	    state->registers[CPSR_REG] = cpsr | N;
+	  }
+	  else {
+	    state->registers[CPSR_REG] = cpsr & N;
+	  }
 
 	//state->registers[CPSR_REG][31] = N ;
     if (!state->decoded->rd) {
       int Z = 1;
-	  Z = Z << 30;
-	  cpsr = state->registers[CPSR_REG];
-	  state->registers[CPSR_REG] = cpsr | Z;
+	    Z = Z << 30;
+	    cpsr = state->registers[CPSR_REG];
+	    state->registers[CPSR_REG] = cpsr | Z;
     }
   }
 
