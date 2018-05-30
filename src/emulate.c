@@ -433,10 +433,6 @@ void executeBranch(state_t *state) {
  * Shifts CPSR register right so can compare bits 28-31
  * Returns 0 or 1 accordingly */
 
-int getFlag(cond_t cond, flags_t flag) {
-  return ((int) cond >> (int) flag) & 0x1;
-}
-
 int checkCond(state_t *state, cond_t cond) {
   uint32_t flags = (state->registers[CPSR_REG]) >> 28;
   return (flags == state->decoded->cond || state->decoded->cond == 14);
