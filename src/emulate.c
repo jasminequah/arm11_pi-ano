@@ -298,6 +298,7 @@ void executeDataProcessing(state_t *state) {
 
   if(decoded->isS) {
     printf("========================S BIT SET======================\n");
+    printf("CPSR VALUE BEFORE: %u\n", registers[CPSR_REG]);
     /* TODO: set CPSR flags
     1. V unaffected
     2. C set to carry out from any shift operation.
@@ -315,24 +316,20 @@ void executeDataProcessing(state_t *state) {
     if (!result) {
       printf("=======================Z BIT SET======================\n");
       //Z is 1 if result is all zeroes.
-      printf("CPSR: %u, Z BIT: %u\n", registers[CPSR_REG], Z_BIT);
       registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
-      printf("CPSR NEW: %u\n", registers[CPSR_REG]);
     } else {
       //Z is 0 is result is NOT all zeros (not sure if needed)
       registers[CPSR_REG] = registers[CPSR_REG] & 0xbfffffff;
     }
 
-      printf("%u\n", (result & N_BIT) >> (BITS_IN_WORD - 1));
     if ((result & N_BIT) >> (BITS_IN_WORD - 1)) {
       printf("=======================N BIT SET======================\n");
       // 4. N is set to logical value of bit 31
       registers[CPSR_REG] = registers[CPSR_REG] | N_BIT;
     } else {
-      printf("CPSR: %u, N BIT: %u\n", registers[CPSR_REG], N_BIT);
       registers[CPSR_REG] = registers[CPSR_REG] & 0x7fffffff;
-      printf("CPSR NEW: %u\n", registers[CPSR_REG]);
     }
+    printf("CPSR VALUE AFTER: %u\n", registers[CPSR_REG]);
   }
 
 }
@@ -474,15 +471,15 @@ void executeBranch(state_t *state) {
 
 int checkCond(state_t *state, cond_t cond) {
   uint32_t flags = (state->registers[CPSR_REG]) >> 28;
-  return (flags == state->decoded->cond || state->decoded->cond == 14);
+  // return (flags == state->decoded->cond || state->decoded->cond == 14);
 
   //decoded_t* decoded = state->decoded;
   //uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
   //return (flags == decoded->cond || decoded->cond == 14);
-  /*int N = getFlag(cond, N_BIT);
-  int Z = getFlag(cond, Z_BIT);
+  int N = flags & 8;
+  int Z = flags & 4;
   // int C = getFlag(cond, C_BIT); not needed
-  int V = getFlag(cond, V_BIT);
+  int V = flags & 1;
 
   switch(cond) {
     case AL:
@@ -499,8 +496,9 @@ int checkCond(state_t *state, cond_t cond) {
       return !Z & (N == V);
     case LE:
       return Z | (N != V);
+    default:
+      return 0;
   }
-  return 0; */
 }
 
 /* Executes calls to different functions if condition satisfied
