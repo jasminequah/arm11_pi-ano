@@ -374,11 +374,16 @@ void executeSDT(state_t *state) {
 //TODO: Check condition field before proceeding, and check all memory and reg references
   decoded_t* decoded  = state->decoded;
   uint32_t* registers = state->registers;
-  uint8_t* memory    = state->memory;
+  uint8_t* memory     = state->memory;
 
-  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
+  if (decoded->rn == PC_REG) {
+    printf("hello rn is pc\n");
+    decoded->rn += 0x4; 
+  }
+ 
+  uint32_t offset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
   if (decoded->isI) {
-    int bit4 = (decoded->offset) & 0x10;
+    int bit4 = (decoded->offset) & 0x010;
     int shiftAmount;
     if (bit4) {
       // bit 4 == 1, shift by value in Rs (the last byte)
@@ -386,40 +391,40 @@ void executeSDT(state_t *state) {
       // int
     } else {
       //bit4 == 0, shift by integer
-      shiftAmount = (decoded->offset & 0xF800) >> 7; // = integer we shift by
+      shiftAmount = (decoded->offset & 0xF80) >> 7; // = integer we shift by
     }
 
     shiftType_t shiftType = (decoded->offset & 0x60) >> 5;
     switch(shiftType) {
       case LSL:
         //logical left
-        immOffset = logicalLeft(immOffset, shiftAmount);
+        offset = logicalLeft(offset, shiftAmount);
         break;
       case LSR:
         //logical right
-        immOffset = logicalRight(immOffset, shiftAmount);
+        offset = logicalRight(offset, shiftAmount);
         break;
       case ASR:
         //arithmetic right
-        immOffset = arithmeticRight(immOffset, shiftAmount);
+        offset = arithmeticRight(offset, shiftAmount);
         break;
       case ROR:
         //rotate right
-        immOffset = rotateRight(immOffset, shiftAmount);
+        offset = rotateRight(offset, shiftAmount);
         break;
     }
   } else {
-    //Offset is an unsigned 12 bit immediate offset
-    immOffset = decoded->offset; //CHECK
+    //Offset is an unsigned 12 bit immediate offset    
+    offset          = decoded->offset & 0x0FF;
   }
 
   uint32_t newBase;
   if (decoded->isU) {
     //offset is added to the base reg
-    newBase = registers[decoded->rn] + immOffset;
+    newBase = registers[decoded->rn] + offset;
   } else {
     //offset is subtracted to the base reg
-    newBase = registers[decoded->rn] - immOffset;
+    newBase = registers[decoded->rn] - offset;
     // note to self: decoded->rn or decoded.rn?
   }
 
@@ -427,25 +432,33 @@ void executeSDT(state_t *state) {
     //pre-indexing : offset is +/- to the base reg before transferring data
     if (decoded->isL) {
       //word is loaded from memory
-      registers[decoded->rd] = memory[newBase];
+      uint32_t loadedMemory = (memory[newBase] << 24) | (memory[newBase + 1] << 16) | (memory[newBase + 2] << 8) | (memory[newBase + 3]);
+      registers[decoded->rd] = loadedMemory;
     } else {
       //word is stored into memory
-      memory[newBase] = registers[decoded->rd];
+      memory[newBase]     = registers[decoded->rd] >> 24;
+      memory[newBase + 1] = (registers[decoded->rd] << 8) >> 24;
+      memory[newBase + 2] = (registers[decoded->rd] << 16) >> 24;
+      memory[newBase + 3] = (registers[decoded->rd] << 24) >> 24;
     }
-
 
   } else {
     //post-indexing : offset is +/- to the base reg after transferring
     if (decoded->isL) {
       //word is loaded from memory
-      registers[decoded->rd] = memory[decoded->rn];
+      uint32_t loadedMemory = (memory[decoded->rn] << 24) | (memory[decoded->rn + 1] << 16) | (memory[decoded->rn + 2] << 8) | (memory[decoded->rn + 3]);
+      registers[decoded->rd] = loadedMemory;
     } else {
       //word is stored into memory - (Rd contents goes into memory)
-      memory[decoded->rn] = registers[decoded->rd];
+      memory[decoded->rn]     = registers[decoded->rd] >> 24;
+      memory[decoded->rn + 1] = (registers[decoded->rd] << 8) >> 24;
+      memory[decoded->rn + 2] = (registers[decoded->rd] << 16) >> 24;
+      memory[decoded->rn + 3] = (registers[decoded->rd] << 24) >> 24;
     }
     //offset is +/- to the base reg
     registers[decoded->rn] = newBase; //CHECK
   }
+  printf("New base: %u\n", newBase);
 }
 
 /* Branch Instruction:
@@ -499,6 +512,7 @@ int checkCond(state_t *state, cond_t cond) {
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
 void execute(state_t *state, instr_t instruction) {
+  //printf("Instruction number: %u\n", instruction);
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
     switch (instruction) {
