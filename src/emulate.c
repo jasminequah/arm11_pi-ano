@@ -277,13 +277,13 @@ void executeDataProcessing(state_t *state) {
       carryOut = checkAddCarryOut(operand1, operand2);
       break;
     case TST:
-      result = registers[decoded->rd];
+      // only updates carry from shift operations.
       break;
     case TEQ:
-      result = registers[decoded->rd];
+      // only updates carry from shift operations.
       break;
     case CMP:
-      result = registers[decoded->rd];
+      result = operand1 - operand2;
       carryOut = checkSubCarryOut(operand1, operand2);
       break;
     case ORR:
