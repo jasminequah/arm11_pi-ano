@@ -156,22 +156,35 @@ void printDecoded(decoded_t *decoded) {
 
 // Methods for execute:
 
-uint32_t logicalLeft(uint32_t n, uint32_t d) {
+uint32_t logicalLeft(uint32_t n, int d) {
   return (n << d);
 }
 
-uint32_t logicalRight(uint32_t n, uint32_t d) {
+uint32_t logicalRight(uint32_t n, int d) {
   return (n >> d);
 }
 
-uint32_t arithmeticRight(uint32_t n, uint32_t d) {
+uint32_t arithmeticRight(uint32_t n, int d) {
   int temp = (int) n;
   temp >>= d;
   return (uint32_t) temp;
 }
 
-uint32_t rotateRight(uint32_t n, uint32_t d) {
+uint32_t rotateRight(uint32_t n, int d) {
   return (n >> d) | (n << ((BITS_IN_WORD) - d));
+}
+
+int checkAddCarryOut(int a, int b) {
+  if ((a < 0) && (b < 0)) {
+    return (a + b > 0);
+  } else if ((a > 0) && (b > 0)) {
+    return (a + b < 0);
+  }
+  return 0;
+}
+
+int checkSubCarryOut(int a, int b) {
+  if ()
 }
 
 void executeDataProcessing(state_t *state) {
@@ -187,7 +200,6 @@ void executeDataProcessing(state_t *state) {
     operand2 = (uint32_t) imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
     operand2 = rotateRight(operand2, shiftAmount);
-    //TODO: check rotateRight
   }
   // Operand 2 is a register
   else {
@@ -239,13 +251,13 @@ void executeDataProcessing(state_t *state) {
       result = operand1 ^ operand2;
       break;
     case SUB:
-      result = (uint32_t) ((int) operand1 - (int) operand2);
+      result = operand1 - operand2;
       break;
     case RSB:
-      result = (uint32_t) ((int) operand2 - (int) operand1);
+      result = operand2 - operand1;
       break;
     case ADD:
-      result = (uint32_t) ((int) operand1 + (int) operand2);
+      result = operand1 + operand2;
       break;
     case TST:
       break;
@@ -266,6 +278,9 @@ void executeDataProcessing(state_t *state) {
   printf("Rd value after: %u\n", registers[decoded->rd]);
 
   if(decoded->isS) {
+
+
+
     // TODO: set CPSR flags
     /*
     1. V unaffected
@@ -294,46 +309,47 @@ void executeDataProcessing(state_t *state) {
 }
 
 void executeMultiply(state_t *state) {
-  uint32_t *registers = state->registers;
-  decoded_t *decoded  = state->decoded;
-  if (decoded->isA == 1) {
-    registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
+  if (state->decoded->isA == 1) {
+	state->decoded->rd = state->decoded->rm*state->decoded->rs + state->decoded->rn;
      /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-    registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
+	state->decoded->rd = state->decoded->rm*state->decoded->rs;
     /*Rd = Rm * Rs;*/
   }
 
-  if (decoded->isS) {
-    int N = (decoded->rd >> 31) & 1;
-      N = N << 31;
-      uint32_t cpsr = registers[CPSR_REG];
-      if (N) {
-        registers[CPSR_REG] = cpsr | N;
-      } else {
-        registers[CPSR_REG] = cpsr & N;
-      }
+  if (state->decoded->isS) {
+    int N = (state->decoded->rd >> 31) & 1;
+	N = N << 31;
+	uint32_t cpsr = state->registers[CPSR_REG];
+	if (N) {
+	  state->registers[CPSR_REG] = cpsr | N;
+	}
+	else {
+	  state->registers[CPSR_REG] = cpsr & N;
+	}
+
 	//state->registers[CPSR_REG][31] = N ;
-    if (!registers[decoded->rd]) {
+    if (!state->decoded->rd) {
       int Z = 1;
-      Z = Z << 30;
-      cpsr = registers[CPSR_REG];
-      registers[CPSR_REG] = cpsr | Z;
+	  Z = Z << 30;
+	  cpsr = state->registers[CPSR_REG];
+	  state->registers[CPSR_REG] = cpsr | Z;
     }
   }
 
 }
 
 void executeSDT(state_t *state) {
+//TODO: Check condition field before proceeding, and check all memory and reg references
   decoded_t* decoded  = state->decoded;
   uint32_t* registers = state->registers;
-  uint8_t* memory     = state->memory;
+  uint8_t* memory    = state->memory;
 
-  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rm (CHECK)
+  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
   if (decoded->isI) {
     int bit4 = (decoded->offset) & 0x10;
-    uint32_t shiftAmount;
+    int shiftAmount;
     if (bit4) {
       // bit 4 == 1, shift by value in Rs (the last byte)
       shiftAmount = registers[((decoded->offset) & FIRST_4_BITS) >> 8] & LAST_BYTE; //last byte of Rs?
@@ -364,7 +380,7 @@ void executeSDT(state_t *state) {
     }
   } else {
     //Offset is an unsigned 12 bit immediate offset
-    immOffset = decoded->offset;
+    immOffset = decoded->offset; //CHECK
   }
 
   uint32_t newBase;
@@ -374,6 +390,7 @@ void executeSDT(state_t *state) {
   } else {
     //offset is subtracted to the base reg
     newBase = registers[decoded->rn] - immOffset;
+    // note to self: decoded->rn or decoded.rn?
   }
 
   if (decoded->isP) {
@@ -463,6 +480,8 @@ void execute(state_t *state, instr_t instruction) {
         printf("dp\n");
 	      executeDataProcessing(state);
 	      break;
+       //i put the operand as int* since we need to analyze the sub-bits of it
+       //in executeDataProcessing
 
       case MULTIPLY:
         printf("mul\n");
@@ -490,11 +509,7 @@ void execute(state_t *state, instr_t instruction) {
 
 uint32_t getInstruction(state_t *state) {
   uint32_t instruction;
-  instruction = (state->memory[state->registers[PC_REG]] << 24) |
-  (state->memory[state->registers[PC_REG] + 1] << 16) |
-  (state->memory[state->registers[PC_REG] + 2] << 8)  |
-  (state->memory[state->registers[PC_REG] + 3]);
-
+  instruction = (state->memory[state->registers[PC_REG]] << 24) | (state->memory[state->registers[PC_REG] + 1] << 16) | (state->memory[state->registers[PC_REG] + 2] << 8) | (state->memory[state->registers[PC_REG] + 3]);
   return instruction;
 }
 
@@ -641,7 +656,7 @@ state_t *newState(void) {
 
 int main(int argc, char* argv[]) { // binary filename as sole argument
 
-  //assert (argc == 2);
+  // assert (argc == 2);
   // initialise system to default state
   state_t *state = newState();
   if (state == NULL) {
