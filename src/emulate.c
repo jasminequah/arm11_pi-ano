@@ -149,21 +149,21 @@ void printDecoded(decoded_t *decoded) {
 
 // Methods for execute:
 
-uint32_t logicalLeft(uint32_t n, int d) {
+uint32_t logicalLeft(uint32_t n, uint32_t d) {
   return (n << d);
 }
 
-uint32_t logicalRight(uint32_t n, int d) {
+uint32_t logicalRight(uint32_t n, uint32_t d) {
   return (n >> d);
 }
 
-uint32_t arithmeticRight(uint32_t n, int d) {
+uint32_t arithmeticRight(uint32_t n, uint32_t d) {
   int temp = (int) n;
   temp >>= d;
   return (uint32_t) temp;
 }
 
-uint32_t rotateRight(uint32_t n, int d) {
+uint32_t rotateRight(uint32_t n, uint32_t d) {
   return (n >> d) | (n << ((BITS_IN_WORD) - d));
 }
 
@@ -306,15 +306,14 @@ void executeMultiply(state_t *state) {
 }
 
 void executeSDT(state_t *state) {
-//TODO: Check condition field before proceeding, and check all memory and reg references
   decoded_t* decoded  = state->decoded;
   uint32_t* registers = state->registers;
   uint8_t* memory    = state->memory;
 
-  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
+  uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rm (CHECK)
   if (decoded->isI) {
     int bit4 = (decoded->offset) & 0x10;
-    int shiftAmount;
+    uint32_t shiftAmount;
     if (bit4) {
       // bit 4 == 1, shift by value in Rs (the last byte)
       shiftAmount = registers[((decoded->offset) & FIRST_4_BITS) >> 8] & LAST_BYTE; //last byte of Rs?
@@ -345,7 +344,7 @@ void executeSDT(state_t *state) {
     }
   } else {
     //Offset is an unsigned 12 bit immediate offset
-    immOffset = decoded->offset; //CHECK
+    immOffset = decoded->offset;
   }
 
   uint32_t newBase;
@@ -355,7 +354,6 @@ void executeSDT(state_t *state) {
   } else {
     //offset is subtracted to the base reg
     newBase = registers[decoded->rn] - immOffset;
-    // note to self: decoded->rn or decoded.rn?
   }
 
   if (decoded->isP) {
@@ -405,7 +403,7 @@ int getFlag(cond_t cond, flags_t flag) {
 int checkCond(state_t *state, cond_t cond) {
   uint32_t flags = (state->registers[CPSR_REG]) >> 28;
   return (flags == state->decoded->cond || state->decoded->cond == 14);
-  
+
   //decoded_t* decoded = state->decoded;
   //uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
   //return (flags == decoded->cond || decoded->cond == 14);
@@ -445,8 +443,6 @@ void execute(state_t *state, instr_t instruction) {
         printf("dp\n");
 	      executeDataProcessing(state);
 	      break;
-       //i put the operand as int* since we need to analyze the sub-bits of it
-       //in executeDataProcessing
 
       case MULTIPLY:
         printf("mul\n");
@@ -474,7 +470,11 @@ void execute(state_t *state, instr_t instruction) {
 
 uint32_t getInstruction(state_t *state) {
   uint32_t instruction;
-  instruction = (state->memory[state->registers[PC_REG]] << 24) | (state->memory[state->registers[PC_REG] + 1] << 16) | (state->memory[state->registers[PC_REG] + 2] << 8) | (state->memory[state->registers[PC_REG] + 3]); 
+  instruction = (state->memory[state->registers[PC_REG]] << 24) |
+  (state->memory[state->registers[PC_REG] + 1] << 16) |
+  (state->memory[state->registers[PC_REG] + 2] << 8)  |
+  (state->memory[state->registers[PC_REG] + 3]);
+
   return instruction;
 }
 
