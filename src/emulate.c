@@ -4,13 +4,13 @@
 #include <assert.h>
 
 #define BITS_IN_WORD 32
-#define MEMORY_SIZE 65536
-#define NUM_REGS 17
+#define MEMORY_SIZE  65536
+#define NUM_REGS     17
 
 /* specific registers */
-#define SP_REG 13
-#define LR_REG 14
-#define PC_REG 15
+#define SP_REG   13
+#define LR_REG   14
+#define PC_REG   15
 #define CPSR_REG 16
 
 /* Masks for testing function */
@@ -20,24 +20,16 @@
 #define DATA_MASK   0x00000000u
 
 /* Masks for operations */
-#define LAST_4_BITS 0x00F  //only use for 12-bit offset
+#define LAST_4_BITS  0x00F  //only use for 12-bit offset
 #define FIRST_4_BITS 0xF00 //only use for 12-bit offset
-#define LAST_BYTE 0x000000FF
-#define FIRST_BIT 0x80000000
+#define LAST_BYTE    0x000000FF
+#define FIRST_BIT    0x80000000
 
 /*Masks for CPSR_REG */
 #define N_BIT 0x80000000
 #define Z_BIT 0x40000000
 #define C_BIT 0x20000000
 #define V_BIT 0x10000000
-
-/* flags */
-// typedef enum {
-//   V_BIT,
-//   C_BIT,
-//   Z_BIT,
-//   N_BIT
-// } flags_t;
 
 /* instructions */
 typedef enum {
@@ -96,7 +88,7 @@ typedef struct arm_decoded {
   int rd;
   int rs;
   int rm;
-  uint32_t offset;
+  int32_t offset;
 
   opCode_t opCode;
   uint16_t operand2;
@@ -129,6 +121,28 @@ typedef struct arm_state {
   Instructions: Data processing, multiply, single data transfer, branch
   Pipeline: Fetch, Decode, Execute - 3 instructions processed at once.
 */
+
+
+/* Prints values of registers and non-zero memory to file */
+
+void printState(state_t *state) {
+  printf("Registers:\n");
+  for (int i = 0; i < 13; i++) {
+    printf("$%-2d : %9d (0x%08x)\n", i, state->registers[i], state->registers[i]);
+  }
+  printf("PC  : %9d (0x%08x)\n", state->registers[PC_REG], state->registers[PC_REG]);
+  printf("CPSR: %9d (0x%08x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
+
+  printf("Non-zero memory:\n");
+  uint16_t i = 0;
+  while (i < MEMORY_SIZE / 4) {
+    if (state->memory[i] != 0) {
+      printf("0x%08x: 0x%02x%02x%02x%02x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
+    }
+    i += 4;
+  }
+}
+
 
 /* Function to print values stored in decoded_t struct to aid debugging */
 
@@ -182,14 +196,11 @@ int checkAddCarryOut(uint32_t a, uint32_t b) {
   return 0;
 }
 
-int checkSubCarryOut(int a, int b) {
-  if ((!(a & FIRST_BIT)) & (b & FIRST_BIT)) {
-    return ((a - b) & FIRST_BIT) != 0;
-  } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
-    return ((a - b) & FIRST_BIT) == 0;
-  } else {
+int checkSubCarryOut(uint32_t a, uint32_t b) {
+  if (b > a) {
     return 0;
   }
+  return 1;
 }
 
 void executeDataProcessing(state_t *state) {
@@ -297,39 +308,36 @@ void executeDataProcessing(state_t *state) {
   }
 
   if(decoded->isS) {
-    printf("========================S BIT SET======================\n");
-    printf("CPSR VALUE BEFORE: %u\n", registers[CPSR_REG]);
-    /* TODO: set CPSR flags
+
+    /* Set CPSR flags
     1. V unaffected
     2. C set to carry out from any shift operation.
        C set to carry out of bit 31 of the ALU in arithmetic operation.
        C set to 1 if addition produced a carry (unsigned overflow).
        C set to 0 if subtraction produced a borrow, 1 otherwise.
     */
-    if (carryOut == 1) {
-      printf("======================C BIT SET======================\n");
+
+    if (carryOut) {
       //C is 1 if carry out is 1
       registers[CPSR_REG] = registers[CPSR_REG] | C_BIT;
+    } else {
+      registers[CPSR_REG] = registers[CPSR_REG] & ~C_BIT;
     }
-    //Otherwise set to 0?
 
     if (!result) {
-      printf("=======================Z BIT SET======================\n");
       //Z is 1 if result is all zeroes.
       registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
     } else {
-      //Z is 0 is result is NOT all zeros (not sure if needed)
+      //Z is 0 is result is NOT all zeros
       registers[CPSR_REG] = registers[CPSR_REG] & 0xbfffffff;
     }
 
     if ((result & N_BIT) >> (BITS_IN_WORD - 1)) {
-      printf("=======================N BIT SET======================\n");
       // 4. N is set to logical value of bit 31
       registers[CPSR_REG] = registers[CPSR_REG] | N_BIT;
     } else {
       registers[CPSR_REG] = registers[CPSR_REG] & 0x7fffffff;
     }
-    printf("CPSR VALUE AFTER: %u\n", registers[CPSR_REG]);
   }
 
 }
@@ -338,12 +346,10 @@ void executeMultiply(state_t *state) {
   decoded_t* decoded  = state->decoded;
   uint32_t* registers = state->registers;
   if (state->decoded->isA) {
-	registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
-     /*Rd = (Rm * Rs) + Rn;*/
+    registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
   }
   else {
-	registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
-    /*Rd = Rm * Rs;*/
+    registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
   }
 
   if (state->decoded->isS) {
@@ -353,18 +359,6 @@ void executeMultiply(state_t *state) {
     } else {
       state->registers[CPSR_REG] = state->registers[CPSR_REG] & N;
     }
-   /*
-    int N = state->decoded->rd >> 31;
-	N = N << 31;
-	uint32_t cpsr = state->registers[CPSR_REG];
-	if (N) {
-	  state->registers[CPSR_REG] = cpsr | N;
-	} else {
-	  state->registers[CPSR_REG] = cpsr & N;
-	}
-
-	//state->registers[CPSR_REG][31] = N ;
-   */
 
     uint32_t Z = 0;
     if (!registers[decoded->rd]) {
@@ -459,7 +453,7 @@ void executeSDT(state_t *state) {
 void executeBranch(state_t *state) {
   decoded_t* decoded = state->decoded;
   /* Need to check if will overflow or assume it won't? */
-  state->registers[PC_REG] += decoded->offset + 0x4u;
+  state->registers[PC_REG] = ((int) state->registers[PC_REG]) + decoded->offset + 0x4u;
 }
 
 /* Restructure to put execute functions in different files for better readability */
@@ -470,15 +464,13 @@ void executeBranch(state_t *state) {
  * Returns 0 or 1 accordingly */
 
 int checkCond(state_t *state, cond_t cond) {
+  if (state->decoded->cond == 14) {
+    return 1;
+  } else {
   uint32_t flags = (state->registers[CPSR_REG]) >> 28;
-  // return (flags == state->decoded->cond || state->decoded->cond == 14);
 
-  //decoded_t* decoded = state->decoded;
-  //uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
-  //return (flags == decoded->cond || decoded->cond == 14);
   int N = flags & 8;
   int Z = flags & 4;
-  // int C = getFlag(cond, C_BIT); not needed
   int V = flags & 1;
 
   switch(cond) {
@@ -499,6 +491,7 @@ int checkCond(state_t *state, cond_t cond) {
     default:
       return 0;
   }
+}
 }
 
 /* Executes calls to different functions if condition satisfied
@@ -561,11 +554,10 @@ void decode(state_t *state) {
     state->registers[PC_REG] += 0x4u;
   } else {
     instr_t instrNum = getInstructionNum(pc);
-    printf("Instruction number: %d\n", instrNum);
     switch (instrNum) {
 
       case(BRANCH) :
-        state->decoded->offset   = (pc << 8) >> 8;
+        state->decoded->offset   = ((int) (pc << 8)) >> 6;
         state->decoded->cond     = (cond_t) pc >> 28;
         execute(state, BRANCH);
         break;
@@ -604,27 +596,6 @@ void decode(state_t *state) {
         state->decoded->rm       = (pc << 28) >> 28;
         execute(state, MULTIPLY);
         break;
-    }
-  }
-}
-
-/* Prints values of registers and non-zero memory to file */
-void printState(state_t *state) {
-  printf("Registers:\n");
-  for (int i = 0; i < 13; i++) {
-    printf("$%-2d : %9d (0x%08x)\n", i, state->registers[i], state->registers[i]);
-  }
-  printf("PC  : %9d (0x%08x)\n", state->registers[PC_REG], state->registers[PC_REG]);
-  printf("CPSR: %9d (0x%08x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
-
-  printf("Non-zero memory:\n");
-  uint16_t i = 0;
-  while (i < MEMORY_SIZE / 4) {
-    if (state->memory[i] == 0) {
-      break;
-    } else {
-      printf("0x%08x: 0x%02x%02x%02x%02x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
-      i += 4;
     }
   }
 }
@@ -695,9 +666,8 @@ int main(int argc, char* argv[]) { // binary filename as sole argument
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state->isTerminated) {
-    //state.registers[PC_REG] += 0x4u;
-
     if (state->registers[PC_REG] > 0x10000u) {
+      state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
       fprintf(stderr, "Attempt to execute an undefined with address greater than 65536.\n");
       return EXIT_FAILURE;
     } else {
