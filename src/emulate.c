@@ -275,31 +275,33 @@ void executeDataProcessing(state_t *state) {
 
 void executeMultiply(state_t *state) {
   if (state->decoded->isA == 1) {
-	state->decoded->rd = state->decoded->rm*state->decoded->rs + state->decoded->rn;
+	state->registers[state->decoded->rd] = state->registers[state->decoded->rm] *
+  state->registers[state->decoded->rs] + state->registers[state->decoded->rn];
      /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-	state->decoded->rd = state->decoded->rm*state->decoded->rs;
+	state->registers[state->decoded->rd] = state->registers[state->decoded->rm] *
+  state->registers[state->decoded->rs];
     /*Rd = Rm * Rs;*/
   }
 
   if (state->decoded->isS) {
     int N = (state->decoded->rd >> 31) & 1;
-	N = N << 31;
-	uint32_t cpsr = state->registers[CPSR_REG];
-	if (N) {
-	  state->registers[CPSR_REG] = cpsr | N;
-	}
-	else {
-	  state->registers[CPSR_REG] = cpsr & N;
-	}
+	  N = N << 31;
+	  uint32_t cpsr = state->registers[CPSR_REG];
+	  if (N) {
+	    state->registers[CPSR_REG] = cpsr | N;
+	  }
+	  else {
+	    state->registers[CPSR_REG] = cpsr & N;
+	  }
 
 	//state->registers[CPSR_REG][31] = N ;
     if (!state->decoded->rd) {
       int Z = 1;
-	  Z = Z << 30;
-	  cpsr = state->registers[CPSR_REG];
-	  state->registers[CPSR_REG] = cpsr | Z;
+	    Z = Z << 30;
+	    cpsr = state->registers[CPSR_REG];
+	    state->registers[CPSR_REG] = cpsr | Z;
     }
   }
 
@@ -405,7 +407,7 @@ int getFlag(cond_t cond, flags_t flag) {
 int checkCond(state_t *state, cond_t cond) {
   uint32_t flags = (state->registers[CPSR_REG]) >> 28;
   return (flags == state->decoded->cond || state->decoded->cond == 14);
-  
+
   //decoded_t* decoded = state->decoded;
   //uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
   //return (flags == decoded->cond || decoded->cond == 14);
@@ -474,7 +476,7 @@ void execute(state_t *state, instr_t instruction) {
 
 uint32_t getInstruction(state_t *state) {
   uint32_t instruction;
-  instruction = (state->memory[state->registers[PC_REG]] << 24) | (state->memory[state->registers[PC_REG] + 1] << 16) | (state->memory[state->registers[PC_REG] + 2] << 8) | (state->memory[state->registers[PC_REG] + 3]); 
+  instruction = (state->memory[state->registers[PC_REG]] << 24) | (state->memory[state->registers[PC_REG] + 1] << 16) | (state->memory[state->registers[PC_REG] + 2] << 8) | (state->memory[state->registers[PC_REG] + 3]);
   return instruction;
 }
 
