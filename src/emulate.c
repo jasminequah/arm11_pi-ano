@@ -184,10 +184,12 @@ int checkAddCarryOut(uint32_t a, uint32_t b) {
 }
 
 int checkSubCarryOut(int a, int b) {
-  if (!(a & FIRST_BIT) & (b & FIRST_BIT)) {
+  if ((!(a & FIRST_BIT)) & (b & FIRST_BIT)) {
     return ((a - b) & FIRST_BIT) != 0;
   } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
     return ((a - b) & FIRST_BIT) == 0;
+  } else {
+    return 0;
   }
 }
 
@@ -294,7 +296,7 @@ void executeDataProcessing(state_t *state) {
 
   if(decoded->isS) {
 
-
+    printf("================= S BIT IS SET ===========\n");
 
     // TODO: set CPSR flags
     /*
@@ -338,25 +340,33 @@ void executeMultiply(state_t *state) {
   }
 
   if (state->decoded->isS) {
-    int N = (state->decoded->rd >> 31) & 1;
+    uint32_t N = state->decoded->rd & 0x8000;
+    if (N) {
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] | N;
+    } else {
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] & N;
+    }
+   /*
+    int N = state->decoded->rd >> 31;
 	N = N << 31;
 	uint32_t cpsr = state->registers[CPSR_REG];
 	if (N) {
 	  state->registers[CPSR_REG] = cpsr | N;
-	}
-	else {
+	} else {
 	  state->registers[CPSR_REG] = cpsr & N;
 	}
 
 	//state->registers[CPSR_REG][31] = N ;
+   */ 
+ 
+    uint32_t Z = 0;
     if (!state->decoded->rd) {
-      int Z = 1;
-	  Z = Z << 30;
-	  cpsr = state->registers[CPSR_REG];
-	  state->registers[CPSR_REG] = cpsr | Z;
-    }
+      uint32_t Z = 1 << 30;
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] | Z;
+    } else {
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] & Z;
   }
-
+}
 }
 
 void executeSDT(state_t *state) {
