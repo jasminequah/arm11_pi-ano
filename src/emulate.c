@@ -330,12 +330,14 @@ void executeDataProcessing(state_t *state) {
 }
 
 void executeMultiply(state_t *state) {
-  if (state->decoded->isA == 1) {
-	state->decoded->rd = state->decoded->rm*state->decoded->rs + state->decoded->rn;
+  decoded_t* decoded  = state->decoded;
+  uint32_t* registers = state->registers;
+  if (state->decoded->isA) {
+	registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
      /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-	state->decoded->rd = state->decoded->rm*state->decoded->rs;
+	registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
     /*Rd = Rm * Rs;*/
   }
 
@@ -357,10 +359,10 @@ void executeMultiply(state_t *state) {
 	}
 
 	//state->registers[CPSR_REG][31] = N ;
-   */ 
- 
+   */
+
     uint32_t Z = 0;
-    if (!state->decoded->rd) {
+    if (!registers[decoded->rd]) {
       uint32_t Z = 1 << 30;
       state->registers[CPSR_REG] = state->registers[CPSR_REG] | Z;
     } else {
