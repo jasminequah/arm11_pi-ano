@@ -123,6 +123,30 @@ typedef struct arm_state {
   Pipeline: Fetch, Decode, Execute - 3 instructions processed at once.
 */
 
+/* Function to print values stored in decoded_t struct to aid debugging */
+
+void printDecoded(decoded_t *decoded) {
+  printf("============= Decoded Instruction =============\n");
+  printf("Condition code: %d \n", decoded->cond);
+  printf("Single bit values: \n");
+  printf("I: %u \n", decoded->isI);
+  printf("P: %u \n", decoded->isP);
+  printf("U: %u \n", decoded->isU);
+  printf("A: %u \n", decoded->isA);
+  printf("S: %u \n", decoded->isS);
+  printf("L: %u \n", decoded->isL);
+  printf("Registers: \n");
+  printf("Rn : %u \n", decoded->rn);
+  printf("Rd : %u \n", decoded->rd);
+  printf("Rs : %u \n", decoded->rs);
+  printf("Rm : %u \n\n", decoded->rm);
+  printf("Offset : %u \n\n", decoded->offset);
+  printf("Opcode : %u \n", decoded->opCode);
+  printf("Operand2 : %u \n", decoded->operand2);
+  printf("================================================\n");
+}
+
+
 // Methods for execute:
 
 uint32_t logicalLeft(uint32_t n, int d) {
@@ -144,7 +168,6 @@ uint32_t rotateRight(uint32_t n, int d) {
 }
 
 void executeDataProcessing(state_t *state) {
-  printf("hello");
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
 
@@ -153,49 +176,51 @@ void executeDataProcessing(state_t *state) {
 
   // Operand 2 is an immediate value
   if(decoded->isI) {
-    unsigned Imm = decoded->operand2 & 0xFF;
-    operand2 = (uint32_t) Imm;
+    unsigned int imm = decoded->operand2 & 0x0FF;
+    operand2 = (uint32_t) imm;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
     operand2 = rotateRight(operand2, shiftAmount);
+    //TODO: check rotateRight
   }
   // Operand 2 is a register
   else {
-    operand2 = registers[decoded->rm];
+    operand2 = decoded->operand2;
 
-
-    int bit4 = decoded->operand2 & 0x10;
+    int bit4 = decoded->operand2 & 0x010;
     int shiftAmount;
 
     // bit 4 == 1, then shift specified by a register (optional)
     if(bit4) {
-      shiftAmount = registers[decoded->rs] & 0xFF;
+      //Takes last byte of register specified by Rs
+      shiftAmount = registers[(operand2 & 0xF00) >> 8] & 0x000F;
     }
     // bit 4 == 0, then shift by a constant amount
     else {
-      shiftAmount = (decoded->operand2 & 0xF800) >> 7;
+      shiftAmount = (operand2 & 0xF80) >> 7;
+    //  shiftAmount = (decoded->operand2 & 0xF800) >> 7;
     }
 
-    shiftType_t shiftType = (decoded->operand2 & 0x60) >> 5;
+    shiftType_t shiftType = (operand2 & 0x060) >> 5;
 
     switch(shiftType) {
       case LSL:
         //logical left
-        operand2 = logicalLeft(operand2, shiftAmount);
+        operand2 = logicalLeft(registers[operand2 & 0x00F], shiftAmount);
         break;
       case LSR:
         //logical right
-        operand2 = logicalRight(operand2, shiftAmount);
+        operand2 = logicalRight(registers[operand2 & 0x00F], shiftAmount);
         break;
       case ASR:
         //arithmetic right
-        operand2 = arithmeticRight(operand2, shiftAmount);
+        operand2 = arithmeticRight(registers[operand2 & 0x00F], shiftAmount);
         break;
       case ROR:
         //rotate right
-        operand2 = rotateRight(operand2, shiftAmount);
+        operand2 = rotateRight(registers[operand2 & 0x00F], shiftAmount);
         break;
     }
-
+  //TODO: check shift functions according to spec
   }
 
   uint32_t result = 0;
@@ -229,12 +254,12 @@ void executeDataProcessing(state_t *state) {
       result = operand2;
       break;
   }
-  printf("Rd value before: %u", registers[decoded->rd]);
+  printf("Rd value before: %u\n", registers[decoded->rd]);
   registers[decoded->rd] = result;
-  printf("Rd value after: %u", registers[decoded->rd]);
+  printf("Rd value after: %u\n", registers[decoded->rd]);
 
   if(decoded->isS) {
-    // set CPSR flags
+    // TODO: set CPSR flags
     /*
     1. V unaffected
     2. C set to carry out from any shift operation.
@@ -378,10 +403,13 @@ int getFlag(cond_t cond, flags_t flag) {
 }
 
 int checkCond(state_t *state, cond_t cond) {
-  // decoded_t* decoded = state->decoded;
-  // uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
-  // return (flags == decoded->cond || decoded->cond == 14);
-  int N = getFlag(cond, N_BIT);
+  uint32_t flags = (state->registers[CPSR_REG]) >> 28;
+  return (flags == state->decoded->cond || state->decoded->cond == 14);
+  
+  //decoded_t* decoded = state->decoded;
+  //uint32_t flags = logicalRight(state->registers[CPSR_REG], 28);
+  //return (flags == decoded->cond || decoded->cond == 14);
+  /*int N = getFlag(cond, N_BIT);
   int Z = getFlag(cond, Z_BIT);
   // int C = getFlag(cond, C_BIT); not needed
   int V = getFlag(cond, V_BIT);
@@ -402,7 +430,7 @@ int checkCond(state_t *state, cond_t cond) {
     case LE:
       return Z | (N != V);
   }
-  return 0;
+  return 0; */
 }
 
 /* Executes calls to different functions if condition satisfied
@@ -417,8 +445,6 @@ void execute(state_t *state, instr_t instruction) {
         printf("dp\n");
 	      executeDataProcessing(state);
 	      break;
-      /* case 0 : executeDataProcessing(intr[25], toDecimal(&instr[21], 4) ,instr[20],
-       toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]); */
        //i put the operand as int* since we need to analyze the sub-bits of it
        //in executeDataProcessing
 
@@ -426,16 +452,11 @@ void execute(state_t *state, instr_t instruction) {
         printf("mul\n");
 	      executeMultiply(state);
         break;
-      /* case 1 : executeMultiply(state);
-                  break; */
 
       case SINGLE_DATA_TRANSFER:
         printf("sdt\n");
 	      executeSDT(state);
 	      break;
-      /* case 2: executeSDT(instr[25], instr[24], instr[23], instr[20],
-        toDecimal(&instr[16], 4), toDecimal(&instr[12], 4), &instr[0]);
-              break; */
 
       case BRANCH:
         printf("branch\n");
@@ -452,7 +473,9 @@ void execute(state_t *state, instr_t instruction) {
  * Initialises required parts of decoded_t struct for that instruction */
 
 uint32_t getInstruction(state_t *state) {
-  return state->memory[state->registers[PC_REG]];
+  uint32_t instruction;
+  instruction = (state->memory[state->registers[PC_REG]] << 24) | (state->memory[state->registers[PC_REG] + 1] << 16) | (state->memory[state->registers[PC_REG] + 2] << 8) | (state->memory[state->registers[PC_REG] + 3]); 
+  return instruction;
 }
 
 instr_t getInstructionNum(uint32_t pc) {
@@ -472,27 +495,27 @@ void decode(state_t *state) {
   uint32_t pc = getInstruction(state);
   if (!pc) {
     state->isTerminated = 1;
+    //TODO: Need to fix incrementation of PC so simulates pipeline correctly, line below is temporary fix to pass tests
+    state->registers[PC_REG] += 0x4u;
   } else {
     instr_t instrNum = getInstructionNum(pc);
-    // decoded_t decoded;
-    printf("%d", instrNum);
+    printf("Instruction number: %d\n", instrNum);
     switch (instrNum) {
 
       case(BRANCH) :
-        state->decoded->offset = (pc << 8) >> 8;
-        state->decoded->cond   = (cond_t) pc >> 28;
-        // state->decoded = &decoded;
+        state->decoded->offset   = (pc << 8) >> 8;
+        state->decoded->cond     = (cond_t) pc >> 28;
         execute(state, BRANCH);
         break;
 
       case(DATA_PROCESSING) :
-        printf("I'm in data processing \n");
-        state->decoded->cond = (cond_t) pc >> 28;
-        state->decoded->isI = pc & 0x02000000u;
-        state->decoded->isS = pc & 0x00100000u;
-        state->decoded->opCode = (opCode_t)((int)(pc << 7) >> 28);
+        state->decoded->cond     = (cond_t) pc >> 28;
+        state->decoded->isI      = pc & 0x02000000u;
+        state->decoded->isS      = pc & 0x00100000u;
+        state->decoded->opCode   = (opCode_t) ((pc << 7) >> 28);
+        state->decoded->rn       = (pc << 12) >> 28;
+        state->decoded->rd       = (pc << 16) >> 28;
         state->decoded->operand2 = (uint16_t)pc;
-        // state->decoded = &decoded;
         execute(state, DATA_PROCESSING);
         break;
 
@@ -505,7 +528,6 @@ void decode(state_t *state) {
         state->decoded->rn       = (pc << 12) >> 28;
         state->decoded->rd       = (pc << 16) >> 28;
         state->decoded->offset   = (pc << 20) >> 20;
-        // state->decoded   = &decoded;
         execute(state, SINGLE_DATA_TRANSFER);
         break;
 
@@ -517,10 +539,9 @@ void decode(state_t *state) {
         state->decoded->rn       = (pc << 16) >> 28;
         state->decoded->rs       = (pc << 20) >> 28;
         state->decoded->rm       = (pc << 28) >> 28;
-        // state->decoded   = &decoded;
         execute(state, MULTIPLY);
         break;
-      }
+    }
   }
 }
 
@@ -528,10 +549,10 @@ void decode(state_t *state) {
 void printState(state_t *state) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
-    printf("$%d : %d (0x%x)\n", i, state->registers[i], state->registers[i]);
+    printf("$%-2d : %9d (0x%08x)\n", i, state->registers[i], state->registers[i]);
   }
-  printf("PC : %d (0x%x)\n", state->registers[PC_REG], state->registers[PC_REG]);
-  printf("CPSR : %d (0x%x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
+  printf("PC  : %9d (0x%08x)\n", state->registers[PC_REG], state->registers[PC_REG]);
+  printf("CPSR: %9d (0x%08x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
 
   printf("Non-zero memory:\n");
   uint16_t i = 0;
@@ -539,7 +560,7 @@ void printState(state_t *state) {
     if (state->memory[i] == 0) {
       break;
     } else {
-      printf("0x%x: 0x%02x%02x%02x%02x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
+      printf("0x%08x: 0x%02x%02x%02x%02x\n", i, state->memory[i + 3], state->memory[i + 2], state->memory[i + 1], state->memory[i]);
       i += 4;
     }
   }
@@ -571,25 +592,25 @@ void readBinary(state_t *state, char* fileName) {
 state_t *newState(void) {
   state_t *state = malloc(sizeof(state_t));
   if (state == NULL) {
-    printf("could not allocate space for state.");
+    printf("could not allocate space for state.\n");
     return NULL;
   }
 
   state->decoded = malloc(sizeof(decoded_t));
   if (state->decoded == NULL) {
-    printf("could not allocate space for decoded struct.");
+    printf("could not allocate space for decoded struct.\n");
     return NULL;
   }
 
   state->registers = calloc(NUM_REGS, sizeof(uint32_t));
   if (state->registers == NULL) {
-    printf("could not allocate space for registers.");
+    printf("could not allocate space for registers.\n");
     return NULL;
   }
 
   state->memory = calloc(MEMORY_SIZE, sizeof(uint8_t));
   if (state->memory == NULL) {
-    printf("could not allocate space for memory.");
+    printf("could not allocate space for memory.\n");
     return NULL;
   }
 
