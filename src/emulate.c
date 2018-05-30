@@ -204,30 +204,28 @@ void executeDataProcessing(state_t *state) {
 
   // Operand 2 is an immediate value
   if(decoded->isI) {
-    unsigned int imm = decoded->operand2 & 0x0FF;
-    operand2 = (uint32_t) imm;
+    uint32_t imm = ((uint32_t) decoded->operand2) & 0x0FF;
     int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
-    operand2 = rotateRight(operand2, shiftAmount);
+    operand2 = rotateRight(imm, shiftAmount);
   }
   // Operand 2 is a register
   else {
-    operand2 = decoded->operand2;
 
-    int bit4 = decoded->operand2 & 0x010;
+    int bit4 = (decoded->operand2) & 0x010;
     int shiftAmount;
 
     // bit 4 == 1, then shift specified by a register (optional)
     if(bit4) {
       //Takes last byte of register specified by Rs
-      shiftAmount = registers[(operand2 & 0xF00) >> 8] & 0x000F;
+      shiftAmount = registers[(decoded->operand2 & 0xF00) >> 8] & 0x000F;
     }
     // bit 4 == 0, then shift by a constant amount
     else {
-      shiftAmount = (operand2 & 0xF80) >> 7;
+      shiftAmount = (decoded->operand2 & 0xF80) >> 7;
     //  shiftAmount = (decoded->operand2 & 0xF800) >> 7;
     }
 
-    shiftType_t shiftType = (operand2 & 0x060) >> 5;
+    shiftType_t shiftType = (decoded->operand2 & 0x060) >> 5;
 
     switch(shiftType) {
       case LSL:
