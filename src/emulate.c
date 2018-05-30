@@ -610,7 +610,7 @@ void decode(state_t *state) {
   }
 }
 
-Prints values of registers and non-zero memory to file 
+/* Prints values of registers and non-zero memory to file */
 void printState(state_t *state) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
