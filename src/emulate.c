@@ -274,34 +274,32 @@ void executeDataProcessing(state_t *state) {
 }
 
 void executeMultiply(state_t *state) {
-  if (state->decoded->isA == 1) {
-	state->registers[state->decoded->rd] = state->registers[state->decoded->rm] *
-  state->registers[state->decoded->rs] + state->registers[state->decoded->rn];
+  uint32_t *registers = state->registers;
+  decoded_t *decoded  = state->decoded;
+  if (decoded->isA == 1) {
+    registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
      /*Rd = (Rm * Rs) + Rn;*/
   }
   else {
-	state->registers[state->decoded->rd] = state->registers[state->decoded->rm] *
-  state->registers[state->decoded->rs];
+    registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
     /*Rd = Rm * Rs;*/
   }
 
-  if (state->decoded->isS) {
-    int N = (state->decoded->rd >> 31) & 1;
-	  N = N << 31;
-	  uint32_t cpsr = state->registers[CPSR_REG];
-	  if (N) {
-	    state->registers[CPSR_REG] = cpsr | N;
-	  }
-	  else {
-	    state->registers[CPSR_REG] = cpsr & N;
-	  }
-
+  if (decoded->isS) {
+    int N = (decoded->rd >> 31) & 1;
+      N = N << 31;
+      uint32_t cpsr = registers[CPSR_REG];
+      if (N) {
+        registers[CPSR_REG] = cpsr | N;
+      } else {
+        registers[CPSR_REG] = cpsr & N;
+      }
 	//state->registers[CPSR_REG][31] = N ;
-    if (!state->decoded->rd) {
+    if (!registers[decoded->rd]) {
       int Z = 1;
-	    Z = Z << 30;
-	    cpsr = state->registers[CPSR_REG];
-	    state->registers[CPSR_REG] = cpsr | Z;
+      Z = Z << 30;
+      cpsr = registers[CPSR_REG];
+      registers[CPSR_REG] = cpsr | Z;
     }
   }
 
@@ -311,7 +309,7 @@ void executeSDT(state_t *state) {
 //TODO: Check condition field before proceeding, and check all memory and reg references
   decoded_t* decoded  = state->decoded;
   uint32_t* registers = state->registers;
-  uint8_t* memory    = state->memory;
+  uint8_t* memory     = state->memory;
 
   uint32_t immOffset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
   if (decoded->isI) {
