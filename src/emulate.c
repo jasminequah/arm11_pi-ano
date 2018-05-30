@@ -26,8 +26,8 @@
 #define FIRST_BIT 0x80000000
 
 /*Masks for CPSR_REG */
-#define Z_BIT 0x40000000
 #define N_BIT 0x80000000
+#define Z_BIT 0x40000000
 #define C_BIT 0x20000000
 #define V_BIT 0x10000000
 
@@ -153,7 +153,6 @@ void printDecoded(decoded_t *decoded) {
   printf("================================================\n");
 }
 
-
 // Methods for execute:
 
 uint32_t logicalLeft(uint32_t n, int d) {
@@ -185,11 +184,11 @@ int checkAddCarryOut(uint32_t a, uint32_t b) {
 
 int checkSubCarryOut(int a, int b) {
   if ((!(a & FIRST_BIT)) & (b & FIRST_BIT)) {
-    return ((a - b) & FIRST_BIT) != 0;
-  } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
     return ((a - b) & FIRST_BIT) == 0;
+  } else if ((a & FIRST_BIT) & !(b & FIRST_BIT)) {
+    return ((a - b) & FIRST_BIT) != 0;
   } else {
-    return 0;
+    return 1;
   }
 }
 
@@ -219,7 +218,7 @@ void executeDataProcessing(state_t *state) {
       //Takes last byte of register specified by Rs
       shiftAmount = registers[(decoded->operand2 & 0xF00) >> 8] & 0x000F;
     }
-    // bit 4 == 0, then shift by a constant amount
+    // bit 4 == 0, then shift by a constant amounti
     else {
       shiftAmount = (decoded->operand2 & 0xF80) >> 7;
     //  shiftAmount = (decoded->operand2 & 0xF800) >> 7;
@@ -251,24 +250,30 @@ void executeDataProcessing(state_t *state) {
     }
   //TODO: check shift functions according to spec
   }
+ 
   uint32_t result = 0;
   switch(decoded->opCode) {
     case AND:
       result = operand1 & operand2;
+      registers[decoded->rd] = result;
       break;
     case EOR:
       result = operand1 ^ operand2;
+      registers[decoded->rd] = result;
       break;
     case SUB:
       result = operand1 - operand2;
+      registers[decoded->rd] = result;
       carryOut = checkSubCarryOut(operand1, operand2);
       break;
     case RSB:
       result = operand2 - operand1;
+      registers[decoded->rd] = result;
       carryOut = checkSubCarryOut(operand2, operand1);
       break;
     case ADD:
       result = operand1 + operand2;
+      registers[decoded->rd] = result;
       carryOut = checkAddCarryOut(operand1, operand2);
       break;
     case TST:
@@ -283,21 +288,17 @@ void executeDataProcessing(state_t *state) {
       break;
     case ORR:
       result = operand1 | operand2;
+      registers[decoded->rd] = result;
       break;
     case MOV:
       result = operand2;
+      registers[decoded->rd] = result;
       break;
   }
-  printf("Rd value before: %u\n", registers[decoded->rd]);
-  registers[decoded->rd] = result;
-  printf("Rd value after: %u\n", registers[decoded->rd]);
 
   if(decoded->isS) {
-
-    printf("================= S BIT IS SET ===========\n");
-
-    // TODO: set CPSR flags
-    /*
+    printf("========================S BIT SET======================\n");
+    /* TODO: set CPSR flags
     1. V unaffected
     2. C set to carry out from any shift operation.
        C set to carry out of bit 31 of the ALU in arithmetic operation.
@@ -305,23 +306,32 @@ void executeDataProcessing(state_t *state) {
        C set to 0 if subtraction produced a borrow, 1 otherwise.
     */
     if (carryOut == 1) {
+      printf("======================C BIT SET======================\n");
       //C is 1 if carry out is 1
       registers[CPSR_REG] = registers[CPSR_REG] | C_BIT;
     }
+    //Otherwise set to 0?
 
-    if (result == 0) {
+    if (!result) {
+      printf("=======================Z BIT SET======================\n");
       //Z is 1 if result is all zeroes.
+      printf("CPSR: %u, Z BIT: %u\n", registers[CPSR_REG], Z_BIT);
       registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
+      printf("CPSR NEW: %u\n", registers[CPSR_REG]);
     } else {
       //Z is 0 is result is NOT all zeros (not sure if needed)
-      registers[CPSR_REG] = registers[CPSR_REG] & 0xBFFF;
+      registers[CPSR_REG] = registers[CPSR_REG] & 0xbfffffff;
     }
 
+      printf("%u\n", (result & N_BIT) >> (BITS_IN_WORD - 1));
     if ((result & N_BIT) >> (BITS_IN_WORD - 1)) {
+      printf("=======================N BIT SET======================\n");
       // 4. N is set to logical value of bit 31
       registers[CPSR_REG] = registers[CPSR_REG] | N_BIT;
     } else {
-      registers[CPSR_REG] = registers[CPSR_REG] & 0x7FFF;
+      printf("CPSR: %u, N BIT: %u\n", registers[CPSR_REG], N_BIT);
+      registers[CPSR_REG] = registers[CPSR_REG] & 0x7fffffff;
+      printf("CPSR NEW: %u\n", registers[CPSR_REG]);
     }
   }
 
@@ -452,7 +462,7 @@ void executeSDT(state_t *state) {
 void executeBranch(state_t *state) {
   decoded_t* decoded = state->decoded;
   /* Need to check if will overflow or assume it won't? */
-  state->registers[PC_REG] += decoded->offset;
+  state->registers[PC_REG] += decoded->offset + 0x4u;
 }
 
 /* Restructure to put execute functions in different files for better readability */
@@ -502,25 +512,19 @@ void execute(state_t *state, instr_t instruction) {
   if (checkCond(state, state->decoded->cond)) {
     switch (instruction) {
       case DATA_PROCESSING:
-        printf("dp\n");
-	      executeDataProcessing(state);
-	      break;
-       //i put the operand as int* since we need to analyze the sub-bits of it
-       //in executeDataProcessing
+	executeDataProcessing(state);
+	break;
 
       case MULTIPLY:
-        printf("mul\n");
-	      executeMultiply(state);
+	executeMultiply(state);
         break;
 
       case SINGLE_DATA_TRANSFER:
-        printf("sdt\n");
-	      executeSDT(state);
-	      break;
+	executeSDT(state);
+	break;
 
       case BRANCH:
-        printf("branch\n");
-	      executeBranch(state);
+	executeBranch(state);
         break;
     }
   } else {
@@ -606,7 +610,7 @@ void decode(state_t *state) {
   }
 }
 
-/* Prints values of registers and non-zero memory to file */
+Prints values of registers and non-zero memory to file 
 void printState(state_t *state) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
