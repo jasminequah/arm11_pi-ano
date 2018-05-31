@@ -57,13 +57,12 @@ We divided the structure of the emulator into the three stages of the pipeline: 
 
 \begin{itemize}
 
-\item \texttt{emulate.c}: Contains the main function, which calls the binary file loader and executes the fetch stage of the pipeline, before printing out the state of the processor after all instructions have been executed.
+\item \texttt{emulate.c}: Contains the main function, which calls the binary file loader, carries out the pipeline process, and prints out the state of the processor after all instructions have been executed.
 \item \texttt{definitions.h}: Contains definitions for structs, enumerated types, and macros.
-\item \texttt{ioutilities.c}: Contains the functions needed for the binary file loader and printing the state of the processor after.
+\item \texttt{ioutils.c}: Contains the functions needed for the binary file loader and printing the state of the processor after.
 \item \texttt{decode.c}: Contains the decode stage of the pipeline.
 \item \texttt{execute.c}: Contains the execute stage of the pipeline, with functions for the four possible types of instructions.
-\item \texttt{decodeUtils.c}: Contains the functions needed for the decode stage of the pipeline.
-\item \texttt{executeUtils.c}: Contains the functions needed for the execute stage of the pipeline.
+\item \texttt{utilities.c}: Contains functions needed for computing the  three stages of the pipeline.
 
 \end{itemize}
 
@@ -76,9 +75,9 @@ The functions used for reading in files in \texttt{ioutilities.c} could also be 
 \subsection{Future Challenges in Implementation}
 % Discussion on implementation tasks you think you will find difficult/challenging later on,and how you are working to mitigate these.
 
-For the implementation of the assembler, we believe we may face some problems in creating the tokeniser to parse instructions, as string manipulation is required, which often has unwanted side effects in C which we will not have faced before. To mitigate these, we will be especially careful when using pointers and during the referencing/dereferencing of variables to ensure all our memory accesses are valid and do not exceed the bounds of the array. 
+For the implementation of the assembler, we believe we may face some problems in creating the tokeniser to parse instructions, as string manipulation is required, which often has unwanted side effects in C which we will not have faced before. To mitigate these, we will be especially careful when using pointers and during the referencing/dereferencing of variables to ensure all our memory accesses are valid and do not exceed the bounds of the array.
 
-Another problem we will face in implementation is avoiding duplication of code. This occurred when writing \texttt{emulate.c}, as some functions written by two people had some similar functionality, resulting in us having to remove the duplication later on when reviewing our code. Therefore, we plan to try to identify the cases where we can outsource the code to another function beforehand by planning the structure of future parts of our project better, so that the code can be reused by the relevant functions. 
+Another problem we will face in implementation is avoiding duplication of code. This occurred when writing \texttt{emulate.c}, as some functions written by two people had some similar functionality, resulting in us having to remove the duplication later on when reviewing our code. Therefore, we plan to try to identify the cases where we can outsource the code to another function beforehand by planning the structure of future parts of our project better, so that the code can be reused by the relevant functions.
 
 % Symbol data table (abstract data type), masking
 
