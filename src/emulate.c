@@ -13,12 +13,6 @@
 #define PC_REG   15
 #define CPSR_REG 16
 
-/* Masks for testing function */
-#define MULT_MASK   0x00000090u
-#define SD_MASK     0x04000000u
-#define BRANCH_MASK 0x0a000000u
-#define DATA_MASK   0x00000000u
-
 /* Masks for operations */
 #define LAST_4_BITS  0x00F  //only use for 12-bit offset
 #define FIRST_4_BITS 0xF00  //only use for 12-bit offset
@@ -315,7 +309,6 @@ void executeDataProcessing(state_t *state) {
     }
 
     if (!result) {
-      printf("result: %u\n", result);
       // Z is 1 if result is all zeroes.
       registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
     } else {
@@ -367,7 +360,6 @@ void executeSDT(state_t *state) {
   uint32_t baseRegContents = registers[decoded->rn];
 
   if (decoded->rn == PC_REG) {
-    printf("Rn is PC\n");
     baseRegContents += 0x8; 
   }
  
@@ -420,7 +412,7 @@ void executeSDT(state_t *state) {
 
   if (decoded->isP) {
    // Pre-indexing: offset is +/- to the base register before transferring data 
-   if (newBase + 3 > 0x10000u) {
+   if (newBase + 3 > MEMORY_SIZE) {
       printf("Error: out of bounds memory access at address location 0x%x\n", newBase);
       return;
     }
@@ -443,7 +435,7 @@ void executeSDT(state_t *state) {
 
   } else {
     // Post-indexing : offset is +/- to the base register after transferring data
-    if (baseRegContents + 3 > 0x10000u) {
+    if (baseRegContents + 3 > MEMORY_SIZE) {
       printf("Error: out of bounds memory access at address location 0x%x\n", baseRegContents);
       return;
     }
@@ -468,7 +460,6 @@ void executeSDT(state_t *state) {
     registers[decoded->rn] = newBase; //CHECK
   }
 
-  printf("New base: %u\n", newBase);
 }
 
 /* Branch Instruction:
@@ -519,7 +510,7 @@ int checkCond(state_t *state, cond_t cond) {
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
 void execute(state_t *state, instr_t instruction) {
-  printf("Instruction number: %u\n", instruction);
+  //printf("Instruction number: %u\n", instruction);
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
     switch (instruction) {
@@ -687,7 +678,7 @@ int main(int argc, char* argv[]) {
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state->isTerminated) {
-    if (state->registers[PC_REG] > 0x10000u) {
+    if (state->registers[PC_REG] > MEMORY_SIZE) {
       state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
       fprintf(stderr, "Error: out of bounds memory access at address location 0x%x\n", state->registers[PC_REG]);
       return EXIT_FAILURE;
