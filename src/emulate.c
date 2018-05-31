@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "definitions.h"
 #include "utilities.h"
+#include "ioutils.h"
 
 void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->decoded;
