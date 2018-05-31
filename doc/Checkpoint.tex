@@ -1,30 +1,85 @@
 \documentclass[11pt]{article}
 
 \usepackage{fullpage}
+\usepackage[a4paper, portrait, margin=2cm]{geometry}
 
 \begin{document}
 
-\title{ARM Checkpoint... }
-\author{TODO}
+\title{ARM Checkpoint Report}
+\author{Bargavi Chandramouli, Christopher Gunadi, Esther Wong, Jasmine Quah}
 
 \maketitle
+\setlength{\parindent}{1cm}
 
 \section{Group Organisation}
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+\subsection{Splitting the work between the group}
+% Statement on how you've split the work between group members and how you are co-ordinating your work.
+
+In our initial group discussion, we all contributed ideas towards the implementation, creating an initial draft of the structure of our code, so all members were aware of the purpose of every function and how instructions loaded from binary files are passed through the pipeline.
+
+We decided to work together to design the data types required, as each of us would need to use and be familiar with these for the individual parts of the code we wrote. Next, we delegated functions for each member to complete. After we had all written our code, we came together as a group to test and debug.
+
+\subsection{Co-ordinating our work}
+
+Our work is coordinated by regularly pushing onto our GitLab repository, so each of us has access to the latest version of our project, which we can \texttt{pull} and work on or \texttt{merge}.
+
+However, one thing we wanted to change for future tasks is to divide the repository into separate branches to work on and merge later to avoid conflicts in our separate work flows, which we often encountered while making our emulator. Doing this would help to divide the work more concretely and improve our project structure, also making it easier to revert changes if needed.
+
+\subsection{Reflection on how well our group is working}
+% Discussion on how well you think the group is working and how you imagine it might need to change for the later tasks.
+
+Overall, we believe our team is working well together, led by our good communication with each other. We all feel comfortable bringing up any questions or ideas to discuss with our teammates and while debugging and testing our code, each of us checked each others' code for any problems, leading to any issues being quickly identified and rectified.
+
+Although we debugged our code as a group, in our future work, we believe it would be more beneficial to split up into pairs and divide the debugging of issues, which would be a more productive use of each of our group members' time, since it was often the case that there were too many people looking at the same code.
 
 \section{Implementation Strategies}
+% How you've structured your emulator, and what bits you think you will be able to reuse for the assembler.
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+\subsection{Data structures, enumerated types and macros:}
+
+\begin{itemize}
+
+\item \textbf{ARM processor state} (\texttt{state\_t}): struct consisting of an array of pointers to 17 32-bit registers, 64KB memory represented by an array, a pointer to the current instruction, and an integer flag indicating whether the program has terminated.
+
+\item \textbf{Decoded instruction} (\texttt{decoded\_t}): struct consisting of the condition code, flag bits, register addresses, a 32-bit offset, opcode, and operand2, as defined in the specification. The relevant values for each instruction are set during the decode stage of the pipeline.
+
+\item \textbf{Enumerated types:} We defined a few enumerated types to improve the readability of our code and allow us to quickly access various register bits and flags. These included types for the CPSR bits, instruction numbers, condition flags, opcode and the shift type.
+
+\item \textbf{Macros:} Lastly, we included some macros to reduce repetition and the use of magic numbers, improving the readability and re-usability of our code. These included the word size, memory size, number of registers, numbers of special purpose registers, as well as some masks.
+
+\end{itemize}
+
+\subsection{Structure of \texttt{emulate.c}}
+
+% TODO: write about splitting of files
+We divided the structure of the emulator into the three stages of the pipeline: fetch, decode and execute, then further subdivided the execute stage into the four possible instructions. The file structure was split to match the problem structure, and we utilised the Makefile to encode the dependencies, allowing us to automatically compile our project.
+
+\begin{itemize}
+
+\item \texttt{emulate.c}: Contains the main function, which calls the binary file loader and executes the fetch stage of the pipeline, before printing out the state of the processor after all instructions have been executed.
+\item \texttt{definitions.h}: Contains definitions for structs, enumerated types, and macros.
+\item \texttt{ioutilities.c}: Contains the functions needed for the binary file loader and printing the state of the processor after.
+\item \texttt{decode.c}: Contains the decode stage of the pipeline.
+\item \texttt{execute.c}: Contains the execute stage of the pipeline, with functions for the four possible types of instructions.
+\item \texttt{decodeUtils.c}: Contains the functions needed for the decode stage of the pipeline.
+\item \texttt{executeUtils.c}: Contains the functions needed for the execute stage of the pipeline.
+
+\end{itemize}
+
+\subsection{Re-usability of code for \texttt{assemble.c}}
+
+Our assembler will make use of many of the same data structures, macros, masks and enumerated types implemented in the emulator, and so we will be able to reuse these. For example, we will still need to store the values of the various parts of the decoded instruction in some way before we convert the full instruction into binary, and so our \texttt{decoded\_t} struct can be reused. In anticipation of this, we have separated these into a separate file, \texttt{definitions.h}, which can be included in the files needed for the assembler to avoid unnecessary duplication of code in our project.
+
+The functions used for reading in files in \texttt{ioutilities.c} could also be reused in the assembler, as our assembler still needs this functionality. For this reason, we have separated these functions from those needed in the pipeline.
+
+\subsection{Future Challenges in Implementation}
+% Discussion on implementation tasks you think you will find difficult/challenging later on,and how you are working to mitigate these.
+
+For the implementation of the assembler, we believe we may face some problems in creating the tokeniser to parse instructions, as string manipulation is required, which often has unwanted side effects in C which we will not have faced before. To mitigate these, we will be especially careful when using pointers and during the referencing/dereferencing of variables to ensure all our memory accesses are valid and do not exceed the bounds of the array. 
+
+Another problem we will face in implementation is avoiding duplication of code. This occurred when writing \texttt{emulate.c}, as some functions written by two people had some similar functionality, resulting in us having to remove the duplication later on when reviewing our code. Therefore, we plan to try to identify the cases where we can outsource the code to another function beforehand by planning the structure of future parts of our project better, so that the code can be reused by the relevant functions. 
+
+% Symbol data table (abstract data type), masking
 
 \end{document}
