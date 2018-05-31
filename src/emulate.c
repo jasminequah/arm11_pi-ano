@@ -277,11 +277,11 @@ void executeDataProcessing(state_t *state) {
       carryOut = checkAddCarryOut(operand1, operand2);
       break;
     case TST:
-      result = registers[decoded->rd];
+      result = operand1 & operand2;
       // Only updates carry from shift operations.
       break;
     case TEQ:
-      result = registers[decoded->rd];
+      result = operand1 ^ operand2;
       // Only updates carry from shift operations.
       break;
     case CMP:
@@ -315,6 +315,7 @@ void executeDataProcessing(state_t *state) {
     }
 
     if (!result) {
+      printf("result: %u\n", result);
       // Z is 1 if result is all zeroes.
       registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
     } else {
@@ -343,19 +344,17 @@ void executeMultiply(state_t *state) {
   }
 
   if (state->decoded->isS) {
-    uint32_t N = state->decoded->rd & 0x8000;
-    if (N) {
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] | N;  
+    //uint32_t N = state->decoded->rd & 0x8000;
+    if (state->decoded->rd >> (BITS_IN_WORD - 1)) {
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] | N_BIT;  
     } else {
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] & N;
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] & 0x7fffffff;
     }
 
-    uint32_t Z = 0;
     if (!registers[decoded->rd]) {
-      uint32_t Z = 1 << 30;
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] | Z;
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] | Z_BIT;
     } else {
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] & Z;
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] & 0xbfffffff;
     }
   }
 }
@@ -520,7 +519,7 @@ int checkCond(state_t *state, cond_t cond) {
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
 void execute(state_t *state, instr_t instruction) {
-  //printf("Instruction number: %u\n", instruction);
+  printf("Instruction number: %u\n", instruction);
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->decoded->cond)) {
     switch (instruction) {
@@ -676,7 +675,7 @@ state_t *newState(void) {
 }
 
 int main(int argc, char* argv[]) {
-  // assert (argc == 2);
+  assert (argc == 2);
 
   /* Initialises system to default state */
   state_t *state = newState();
