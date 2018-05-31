@@ -110,10 +110,10 @@ typedef struct arm_state {
 void printState(state_t *state) {
   printf("Registers:\n");
   for (int i = 0; i < 13; i++) {
-    printf("$%-2d : %9d (0x%08x)\n", i, state->registers[i], state->registers[i]);
+    printf("$%-2d : %10d (0x%08x)\n", i, state->registers[i], state->registers[i]);
   }
-  printf("PC  : %9d (0x%08x)\n", state->registers[PC_REG], state->registers[PC_REG]);
-  printf("CPSR: %9d (0x%08x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
+  printf("PC  : %10d (0x%08x)\n", state->registers[PC_REG], state->registers[PC_REG]);
+  printf("CPSR: %10d (0x%08x)\n", state->registers[CPSR_REG], state->registers[CPSR_REG]);
 
   printf("Non-zero memory:\n");
   uint16_t i = 0;
@@ -225,7 +225,7 @@ void executeDataProcessing(state_t *state) {
       case LSL:
         // Logical left
         operand2 = logicalLeft(registers[decoded->rm], shiftAmount);
-        carryOut = (registers[decoded->rm] >> (BITS_IN_WORD - shiftAmount)) & 0x1;
+        carryOut = (registers[decoded->rm] >> (BITS_IN_WORD - shiftAmount - 1)) & 0x1;
         break;
       case LSR:
         // Logical right
@@ -413,7 +413,7 @@ void executeSDT(state_t *state) {
   if (decoded->isP) {
    // Pre-indexing: offset is +/- to the base register before transferring data 
    if (newBase + 3 > MEMORY_SIZE) {
-      printf("Error: out of bounds memory access at address location 0x%x\n", newBase);
+      printf("Error: Out of bounds memory access at address 0x%08x\n", newBase);
       return;
     }
 
@@ -436,7 +436,7 @@ void executeSDT(state_t *state) {
   } else {
     // Post-indexing : offset is +/- to the base register after transferring data
     if (baseRegContents + 3 > MEMORY_SIZE) {
-      printf("Error: out of bounds memory access at address location 0x%x\n", baseRegContents);
+      printf("Error: Out of bounds memory access at address 0x%08x\n", baseRegContents);
       return;
     }
 
@@ -531,8 +531,6 @@ void execute(state_t *state, instr_t instruction) {
         break;
     }
 
-  } else {
-    printf("Condition not satisfied\n");
   }
 }
 
@@ -680,7 +678,7 @@ int main(int argc, char* argv[]) {
   while (!state->isTerminated) {
     if (state->registers[PC_REG] > MEMORY_SIZE) {
       state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
-      fprintf(stderr, "Error: out of bounds memory access at address location 0x%x\n", state->registers[PC_REG]);
+      fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
       return EXIT_FAILURE;
 
     } else {
