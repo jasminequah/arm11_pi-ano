@@ -6,6 +6,7 @@
 #define BITS_IN_WORD 32
 #define MEMORY_SIZE  65536
 #define NUM_REGS     17
+#define PC_INCREMENT 0x4
 
 /* Specific registers */
 #define SP_REG   13
@@ -13,11 +14,15 @@
 #define PC_REG   15
 #define CPSR_REG 16
 
-/* Masks for operations */
-#define LAST_4_BITS  0x00F  //only use for 12-bit offset
-#define FIRST_4_BITS 0xF00  //only use for 12-bit offset
-#define LAST_BYTE    0x000000FF
-#define FIRST_BIT    0x80000000
+/* Masks for instruction code */
+#define FIRST_4_BITS    0x0000000F
+#define THIRD_4_BITS    0x00000F00
+#define FIRST_BYTE      0x000000FF
+#define BIT_31          0x80000000
+#define BIT_4           0x00000010
+#define BIT_0           0x00000001
+#define SHIFT_TYPE_MASK 0x00000060
+#define SHIFT_AMT_MASK  0x00000F80
 
 /* Masks for CPSR_REG */
 #define N_BIT 0x80000000
@@ -66,10 +71,10 @@ typedef enum {
   ROR
 } shiftType_t;
 
+/* components of decoded instruction */
 typedef struct arm_decoded {
   cond_t cond;
 
-  /* Single bits */
   int isI;
   int isP;
   int isU;
@@ -77,25 +82,18 @@ typedef struct arm_decoded {
   int isS;
   int isL;
 
-  /* Register number [0 - 16] */
   int rn;
   int rd;
   int rs;
   int rm;
-  int32_t offset;
 
+  int32_t offset;
   opCode_t opCode;
   uint16_t operand2;
 
-  /* incomplete .. */
 } decoded_t;
 
-/* Holds the state of the emulator.
- * 1. 17 32-bit Registers
- * 2. 64KB memory (64KB = 65536 Bytes)
- * ..
- * 4. isTerminated = 1 if reach all 0 instruction. */
-
+/* Holds the state of the emulator. */
 typedef struct arm_state {
   uint32_t *registers;
   uint8_t *memory;
@@ -173,10 +171,10 @@ uint32_t rotateRight(uint32_t n, int d) {
 }
 
 int checkAddCarryOut(uint32_t a, uint32_t b) {
-  if ((a & FIRST_BIT) & (b & FIRST_BIT)) {
-    return ((a + b) & FIRST_BIT) == 0;
-  } else if (!(a & FIRST_BIT) & !(b & FIRST_BIT)) {
-    return ((a + b) & FIRST_BIT) != 0;
+  if ((a & BIT_31) & (b & BIT_31)) {
+    return ((a + b) & BIT_31) == 0;
+  } else if (!(a & BIT_31) & !(b & BIT_31)) {
+    return ((a + b) & BIT_31) != 0;
   }
   return 0;
 }
@@ -188,6 +186,46 @@ int checkSubCarryOut(uint32_t a, uint32_t b) {
   return 1;
 }
 
+uint32_t loadMemory(uint8_t *memory, uint32_t memLoc) {
+  return (memory[memLoc + 3] << 24) |
+         (memory[memLoc + 2] << 16) |
+         (memory[memLoc + 1] << 8)  |
+         (memory[memLoc]);
+}
+
+void storeMemory(state_t *state, uint32_t memLoc) {
+  state->memory[memLoc + 3] = state->registers[state->decoded->rd] >> 24;
+  state->memory[memLoc + 2] = (state->registers[state->decoded->rd] << 8) >> 24;
+  state->memory[memLoc + 1] = (state->registers[state->decoded->rd] << 16) >> 24;
+  state->memory[memLoc]     = (state->registers[state->decoded->rd] << 24) >> 24;
+}
+
+uint32_t barrelShifter(uint32_t value, int shiftAmount, int *carryOut, shiftType_t shiftType) {
+  uint32_t result = 0;
+  switch(shiftType) {
+    case LSL:
+      result    = logicalLeft(value, shiftAmount);
+      *carryOut = (value >> (BITS_IN_WORD - shiftAmount - 1)) & BIT_0;
+      break;
+    case LSR:
+      result    = logicalRight(value, shiftAmount);
+      *carryOut = (value >> (shiftAmount - 1)) & BIT_0;
+      break;
+    case ASR:
+      result    = arithmeticRight(value, shiftAmount);
+      *carryOut = (value >> (shiftAmount - 1)) & BIT_0;
+      break;
+    case ROR:
+      result    = rotateRight(value, shiftAmount);
+      *carryOut = (value >> (shiftAmount - 1)) & BIT_0;
+      break;
+    default:
+      printf("not valid barrel shifter operation");
+      return 0;
+  }
+  return result;
+}
+
 void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
@@ -196,53 +234,23 @@ void executeDataProcessing(state_t *state) {
   uint32_t operand2;
 
   int carryOut = 0;
+  int *carryOutPtr = &carryOut;
 
-  // Operand 2 is an immediate value
   if(decoded->isI) {
-    uint32_t imm = ((uint32_t) decoded->operand2) & 0x0FF;
-    int shiftAmount = 2 * ((decoded->operand2 & 0xF00) >> 8);
+    uint32_t imm = ((uint32_t) decoded->operand2) & FIRST_BYTE;
+    int shiftAmount = 2 * ((decoded->operand2 & THIRD_4_BITS) >> 8);
     operand2 = rotateRight(imm, shiftAmount);
-  }
-
-  // Operand 2 is a register
-  else {
-    int bit4 = (decoded->operand2) & 0x010;
+  } else {
+    int bit4 = (decoded->operand2) & BIT_4;
     int shiftAmount;
-
-    // Bit 4 == 1, then shift specified by a register (optional)
     if(bit4) {
-      // Takes last byte of register specified by Rs
-      shiftAmount = registers[(decoded->operand2 & 0xF00) >> 8] & 0x000F;
+      shiftAmount = registers[(decoded->operand2 & THIRD_4_BITS) >> 8] & FIRST_4_BITS;
     }
-    // Bit 4 == 0, then shift by a constant amount
     else {
-      shiftAmount = (decoded->operand2 & 0xF80) >> 7;
+      shiftAmount = (decoded->operand2 & SHIFT_AMT_MASK) >> 7;
     }
-
-    shiftType_t shiftType = (decoded->operand2 & 0x060) >> 5;
-
-    switch(shiftType) {
-      case LSL:
-        // Logical left
-        operand2 = logicalLeft(registers[decoded->rm], shiftAmount);
-        carryOut = (registers[decoded->rm] >> (BITS_IN_WORD - shiftAmount - 1)) & 0x1;
-        break;
-      case LSR:
-        // Logical right
-        operand2 = logicalRight(registers[decoded->rm], shiftAmount);
-        carryOut = (registers[decoded->rm] >> (shiftAmount - 1)) & 0x1;
-        break;
-      case ASR:
-        // Arithmetic right
-        operand2 = arithmeticRight(registers[decoded->rm], shiftAmount);
-        carryOut = (registers[decoded->rm] >> (shiftAmount - 1)) & 0x1;
-        break;
-      case ROR:
-        // Rotate right
-        operand2 = rotateRight(registers[decoded->rm], shiftAmount);
-        carryOut = (registers[decoded->rm] >> (shiftAmount - 1)) & 0x1;
-        break;
-    }
+    shiftType_t shiftType = (decoded->operand2 & SHIFT_TYPE_MASK) >> 5;
+    operand2 = barrelShifter(registers[decoded->rm], shiftAmount, carryOutPtr, shiftType);
   }
 
   uint32_t result = 0;
@@ -272,11 +280,9 @@ void executeDataProcessing(state_t *state) {
       break;
     case TST:
       result = operand1 & operand2;
-      // Only updates carry from shift operations.
       break;
     case TEQ:
       result = operand1 ^ operand2;
-      // Only updates carry from shift operations.
       break;
     case CMP:
       result = operand1 - operand2;
@@ -292,38 +298,32 @@ void executeDataProcessing(state_t *state) {
       break;
   }
 
+  /* Set CPSR flags
+   * 1. V unaffected
+   * 2. C set to carry out from any shift operation.
+   *    C set to carry out of bit 31 of the ALU in arithmetic operation.
+   *    C set to 1 if addition produced a carry (unsigned overflow).
+   *    C set to 0 if subtraction produced a borrow, 1 otherwise. */
+
   if(decoded->isS) {
-
-    /* Set CPSR flags
-     * 1. V unaffected
-     * 2. C set to carry out from any shift operation.
-     *    C set to carry out of bit 31 of the ALU in arithmetic operation.
-     *    C set to 1 if addition produced a carry (unsigned overflow).
-     *    C set to 0 if subtraction produced a borrow, 1 otherwise. */
-
     if (carryOut) {
-      // C is 1 if carry out is 1
       registers[CPSR_REG] = registers[CPSR_REG] | C_BIT;
     } else {
       registers[CPSR_REG] = registers[CPSR_REG] & ~C_BIT;
     }
 
     if (!result) {
-      // Z is 1 if result is all zeroes.
       registers[CPSR_REG] = registers[CPSR_REG] | Z_BIT;
     } else {
-      // Z is 0 is result is NOT all zeros
-      registers[CPSR_REG] = registers[CPSR_REG] & 0xbfffffff;
+      registers[CPSR_REG] = registers[CPSR_REG] & ~Z_BIT;
     }
 
     if ((result & N_BIT) >> (BITS_IN_WORD - 1)) {
-      // N is set to logical value of bit 31
       registers[CPSR_REG] = registers[CPSR_REG] | N_BIT;
     } else {
-      registers[CPSR_REG] = registers[CPSR_REG] & 0x7fffffff;
+      registers[CPSR_REG] = registers[CPSR_REG] & ~N_BIT;
     }
   }
-
 }
 
 void executeMultiply(state_t *state) {
@@ -331,136 +331,84 @@ void executeMultiply(state_t *state) {
   uint32_t* registers = state->registers;
   if (state->decoded->isA) {
     registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
-  }
-  else {
+  } else {
     registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
   }
 
   if (state->decoded->isS) {
-    //uint32_t N = state->decoded->rd & 0x8000;
     if (state->decoded->rd >> (BITS_IN_WORD - 1)) {
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] | N_BIT;  
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] | N_BIT;
     } else {
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] & 0x7fffffff;
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] & ~N_BIT;
     }
 
     if (!registers[decoded->rd]) {
       state->registers[CPSR_REG] = state->registers[CPSR_REG] | Z_BIT;
     } else {
-      state->registers[CPSR_REG] = state->registers[CPSR_REG] & 0xbfffffff;
+      state->registers[CPSR_REG] = state->registers[CPSR_REG] & ~Z_BIT;
     }
   }
 }
 
 void executeSDT(state_t *state) {
-//TODO: Check condition field before proceeding, and check all memory and reg references
   decoded_t* decoded       = state->decoded;
   uint32_t* registers      = state->registers;
   uint8_t* memory          = state->memory;
   uint32_t baseRegContents = registers[decoded->rn];
 
   if (decoded->rn == PC_REG) {
-    baseRegContents += 0x8; 
+    baseRegContents += 0x8;
   }
- 
-  uint32_t offset = registers[(decoded->offset) & LAST_4_BITS]; //= value in Rn (CHECK)
+
+  uint32_t offset = registers[(decoded->offset) & FIRST_4_BITS];
   if (decoded->isI) {
-    int bit4 = (decoded->offset) & 0x010;
+    int bit4 = (decoded->offset) & BIT_4;
     int shiftAmount;
     if (bit4) {
-      // Bit 4 == 1, shift by value in Rs (the last byte)
-      shiftAmount = registers[((decoded->offset) & FIRST_4_BITS) >> 8] & LAST_BYTE; //last byte of Rs?
-      // int
+      shiftAmount = registers[((decoded->offset) & THIRD_4_BITS) >> 8] & FIRST_BYTE;
     } else {
-      // Bit4 == 0, shift by integer
-      shiftAmount = (decoded->offset & 0xF80) >> 7; // = integer we shift by
+      shiftAmount = (decoded->offset & SHIFT_AMT_MASK) >> 7;
     }
-
-    shiftType_t shiftType = (decoded->offset & 0x060) >> 5;
-    switch(shiftType) {
-      case LSL:
-        // Logical left
-        offset = logicalLeft(offset, shiftAmount);
-        break;
-      case LSR:
-        // Logical right
-        offset = logicalRight(offset, shiftAmount);
-        break;
-      case ASR:
-        // Arithmetic right
-        offset = arithmeticRight(offset, shiftAmount);
-        break;
-      case ROR:
-        // Rotate right
-        offset = rotateRight(offset, shiftAmount);
-        break;
-    }
-
+    shiftType_t shiftType = (decoded->offset & SHIFT_TYPE_MASK) >> 5;
+    int carryOut = 1;
+    int* carryOutPtr = &carryOut;
+    offset = barrelShifter(offset, shiftAmount, carryOutPtr, shiftType);
   } else {
-    //Offset is an unsigned 12 bit immediate offset    
-    offset = decoded->offset & 0x0FF;
+    offset = decoded->offset;
   }
 
   uint32_t newBase;
   if (decoded->isU) {
-    //offset is added to the base reg
     newBase = baseRegContents + offset;
   } else {
-    //offset is subtracted to the base reg
     newBase = baseRegContents - offset;
   }
 
   if (decoded->isP) {
-   // Pre-indexing: offset is +/- to the base register before transferring data 
-   if (newBase + 3 > MEMORY_SIZE) {
+    if (newBase + 3 > MEMORY_SIZE) {
       printf("Error: Out of bounds memory access at address 0x%08x\n", newBase);
       return;
     }
-
     if (decoded->isL) {
-      // Word loaded from memory
-      uint32_t loadedMemory = (memory[newBase + 3] << 24) |
-                              (memory[newBase + 2] << 16) |
-                              (memory[newBase + 1] << 8) |
-                              (memory[newBase]);
-      registers[decoded->rd] = loadedMemory;
-
+      registers[decoded->rd] = loadMemory(memory, newBase);
     } else {
-      // Word stored into memory
-      memory[newBase + 3] = registers[decoded->rd] >> 24;
-      memory[newBase + 2] = (registers[decoded->rd] << 8) >> 24;
-      memory[newBase + 1] = (registers[decoded->rd] << 16) >> 24;
-      memory[newBase]     = (registers[decoded->rd] << 24) >> 24;
+      storeMemory(state, newBase);
     }
 
   } else {
-    // Post-indexing : offset is +/- to the base register after transferring data
     if (baseRegContents + 3 > MEMORY_SIZE) {
       printf("Error: Out of bounds memory access at address 0x%08x\n", baseRegContents);
       return;
     }
-
     if (decoded->isL) {
-      // Word is loaded from memory
-      uint32_t loadedMemory = (memory[baseRegContents + 3] << 24) |
-                              (memory[baseRegContents + 2] << 16) |
-                              (memory[baseRegContents + 1] << 8) |
-                              (memory[baseRegContents]);
-      registers[decoded->rd] = loadedMemory;
-
+      registers[decoded->rd] = loadMemory(memory, baseRegContents);
     } else {
-      // Word is stored into memory
-      memory[baseRegContents + 3] = registers[decoded->rd] >> 24;
-      memory[baseRegContents + 2] = (registers[decoded->rd] << 8) >> 24;
-      memory[baseRegContents + 1] = (registers[decoded->rd] << 16) >> 24;
-      memory[baseRegContents]     = (registers[decoded->rd] << 24) >> 24;
+      storeMemory(state, baseRegContents);
     }
-    
-    // Offset is +/- to the base reg
-    registers[decoded->rn] = newBase; //CHECK
+    registers[decoded->rn] = newBase;
   }
-
 }
+
 
 /* Branch Instruction:
  * Adds offset from bits 0 to 23 of decoded instruction to PC */
@@ -567,14 +515,12 @@ void decode(state_t *state) {
   } else {
     instr_t instrNum = getInstructionNum(pc);
     switch (instrNum) {
-
-      case(BRANCH):
+      case BRANCH:
         state->decoded->offset   = ((int) (pc << 8)) >> 6;
         state->decoded->cond     = (cond_t) pc >> 28;
         execute(state, BRANCH);
         break;
-
-      case(DATA_PROCESSING):
+      case DATA_PROCESSING:
         state->decoded->cond     = (cond_t) pc >> 28;
         state->decoded->isI      = pc & 0x02000000u;
         state->decoded->isS      = pc & 0x00100000u;
@@ -585,8 +531,7 @@ void decode(state_t *state) {
         state->decoded->operand2 = (uint16_t)pc;
         execute(state, DATA_PROCESSING);
         break;
-
-      case(SINGLE_DATA_TRANSFER):
+      case SINGLE_DATA_TRANSFER:
         state->decoded->cond     = (cond_t) pc >> 28;
         state->decoded->isI      = pc & 0x02000000u;
         state->decoded->isP      = pc & 0x01000000u;
@@ -597,8 +542,7 @@ void decode(state_t *state) {
         state->decoded->offset   = (pc << 20) >> 20;
         execute(state, SINGLE_DATA_TRANSFER);
         break;
-
-      case(MULTIPLY):
+      case MULTIPLY:
         state->decoded->cond     = (cond_t) pc >> 28;
         state->decoded->isA      = pc & 0x00200000u;
         state->decoded->isS      = pc & 0x00100000u;
@@ -622,15 +566,9 @@ void readBinary(state_t *state, char* fileName) {
   int fileLen = ftell(fptr);
   fseek(fptr, 0, SEEK_SET);
 
-  uint8_t *memPtr = &(state->memory[0]);
-
-  for (int i = 0; i < fileLen / 4; i++) {
-    fread(memPtr, 4, 1, fptr); 
-    memPtr += 4;
-  }
+  fread(state->memory, fileLen, 1, fptr);
 
   fclose(fptr);
-
 }
 
 state_t *newState(void) {
@@ -666,8 +604,8 @@ state_t *newState(void) {
 int main(int argc, char* argv[]) {
   assert (argc == 2);
 
-  /* Initialises system to default state */
   state_t *state = newState();
+
   if (state == NULL) {
     return EXIT_FAILURE;
   }
@@ -680,12 +618,11 @@ int main(int argc, char* argv[]) {
       state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
       fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
       return EXIT_FAILURE;
-
     } else {
       decode(state);
     }
 
-    state->registers[PC_REG] += 0x4u;
+    state->registers[PC_REG] += PC_INCREMENT;
   }
 
   printState(state);
