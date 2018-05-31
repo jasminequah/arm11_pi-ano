@@ -7,9 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-void printState(state_t *state);
-void printDecoded(decoded_t *decoded);
-
 uint32_t logicalLeft(uint32_t n, int d);
 uint32_t logicalRight(uint32_t n, int d);
 uint32_t arithmeticRight(uint32_t n, int d);
@@ -27,7 +24,6 @@ int checkCond(state_t *state, cond_t cond);
 uint32_t getInstruction(state_t *state);
 instr_t getInstructionNum(uint32_t pc);
 
-void readBinary(state_t *state, char* fileName);
 state_t *newState(void);
 
 #endif
