@@ -106,11 +106,11 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 fgets(buffer, MAX_INSTR_LEN, fptr);
 	 int strLength = strlen(buffer);
 	 if (buffer[strLength - 1] != ':') {
-		 char *instrName = strtok(buffer, ' ');
+		 char *instrName = strtok(buffer, ' '); //check this, maybe use strtol
 		 char *remainingInstr = buffer[4]; //bc each instruName is 3 chars + 1 space
 
 		 switch (instrName) {
-	     case ADD :
+	   	 case ADD :
 	 		 case SUB :
 	 		 case RSB :
 	 		 case AND :
@@ -119,8 +119,9 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 		 case MOV :
 	 		 case TST :
 	 		 case TEQ :
-	 		 case CMP : binaryInstructions[instrNum] = parseDataProcessing(symbolTable, ...)
-			            break;
+	 		 case CMP :
+			 	binaryInstructions[instrNum] = parseDataProcessing(symbolTable, ...)
+			  break;
 
 	 	}
 
