@@ -40,13 +40,13 @@ Although we debugged our code as a group, in our future work, we believe it woul
 
 \begin{itemize}
 
-\item \textbf{ARM processor state} (\texttt{state\_t}): struct consisting of an array of pointers to 17 32-bit registers, 64KB memory represented by an array, a pointer to the current instruction, and an integer flag indicating whether the program has terminated.
+\item \textbf{ARM processor state} (\texttt{state\_t}): struct representing the processor's current state. It consists of an array of 32-bit unsigned integers to represent registers, an array of 8-bit unsigned integers to represent the byte-addressable memory, a pointer to the current instruction, and an integer flag indicating whether the program has terminated.
 
 \item \textbf{Decoded instruction} (\texttt{decoded\_t}): struct consisting of the condition code, flag bits, register addresses, a 32-bit offset, opcode, and operand2, as defined in the specification. The relevant values for each instruction are set during the decode stage of the pipeline.
 
 \item \textbf{Enumerated types:} We defined a few enumerated types to improve the readability of our code and allow us to quickly access various register bits and flags. These included types for the CPSR bits, instruction numbers, condition flags, opcode and the shift type.
 
-\item \textbf{Macros:} Lastly, we included some macros to reduce repetition and the use of magic numbers, improving the readability and re-usability of our code. These included the word size, memory size, number of registers, numbers of special purpose registers, as well as some masks.
+\item \textbf{Macros:} Lastly, we included some macros to reduce repetition and the use of magic numbers, improving the readability and reusability of our code. These included the word size, memory size, number of registers, numbers of special purpose registers, as well as some masks.
 
 \end{itemize}
 
@@ -70,7 +70,7 @@ We divided the structure of the emulator into the three stages of the pipeline: 
 
 Our assembler will make use of many of the same data structures, macros, masks and enumerated types implemented in the emulator, and so we will be able to reuse these. For example, we will still need to store the values of the various parts of the decoded instruction in some way before we convert the full instruction into binary, and so our \texttt{decoded\_t} struct can be reused. In anticipation of this, we have separated these into a separate file, \texttt{definitions.h}, which can be included in the files needed for the assembler to avoid unnecessary duplication of code in our project.
 
-The functions used for reading in files in \texttt{ioutilities.c} could also be reused in the assembler, as our assembler still needs this functionality. For this reason, we have separated these functions from those needed in the pipeline.
+The functions used for reading in files in \texttt{ioutils.c} could also be reused in the assembler, as our assembler still needs this functionality. For this reason, we have separated these functions from those needed in the pipeline.
 
 \subsection{Future Challenges in Implementation}
 % Discussion on implementation tasks you think you will find difficult/challenging later on,and how you are working to mitigate these.
