@@ -26,7 +26,6 @@ typdef enum {
 } instrName_t
 
 
-//TODO: figure out a way to pass in the string needed (bc its on the stack in secondPass)
 uint32_t parseDataProcessing(map_t *symbolTable, char *remainingString, instrName_t name) {
 	return 0;
 }
@@ -70,7 +69,7 @@ int firstPass(char* fileName, map_t *symbolTable, int symbolTableSize) {
 	while(1) {
 		char buffer[MAX_INSTR_LEN];
 		fgets(buffer, MAX_INSTR_LEN, fptr);
-		int strLength = strlen(buffer);
+		int strLength = strlen(buffer + 1); //for the \0 char
     if (buffer[strLength - 1] == ':') {
 			if (tableSize >= symbolTableSize) {
 				printf("exceeded symbolTableSize");
@@ -115,11 +114,11 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 int strLength = strlen(buffer);
 	 if (buffer[strLength - 1] != ':') {
 		 char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
-     char *instrString = malloc(sizeof(char) * 3) //i think it's 3...
+     char *instrString = malloc((sizeof(char) * 3) + 1) //i think...
 		 instrString = strcpy(instrString, instrStringBuffer);
 
-		 char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space
-		 char *remainingString = malloc(sizeof(char) * 4);
+		 char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
+		 char *remainingString = malloc((sizeof(char) * 4) + 1);
 		 remainingString = strcpy(remainingString, passedString);
 		 //the above code stores the remaining string on the heap so it can be
 		 //passed to the parse helper functions
