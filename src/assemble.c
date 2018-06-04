@@ -276,70 +276,70 @@ int firstPass(char* fileName, map_t *symbolTable) {
 }
 
 instrName_t toInstrName(char* instrString) {
-  if (strcmp(instrString, "add ") == 0) {
+  if (strcmp(instrString, "add") == 0) {
     return ADD;
   }
-  else if (strcmp(instrString, "sub ") == 0) {
+  else if (strcmp(instrString, "sub") == 0) {
     return SUB;
   }
-  else if (strcmp(instrString, "rsb ") == 0) {
+  else if (strcmp(instrString, "rsb") == 0) {
     return RSB;
   }
-  else if (strcmp(instrString, "and ") == 0) {
+  else if (strcmp(instrString, "and") == 0) {
     return AND;
   }
-  else if (strcmp(instrString, "eor ") == 0) {
+  else if (strcmp(instrString, "eor") == 0) {
     return EOR;
   }
-  else if (strcmp(instrString, "orr ") == 0) {
+  else if (strcmp(instrString, "orr") == 0) {
     return ORR;
   }
-  else if (strcmp(instrString, "mov ") == 0) {
+  else if (strcmp(instrString, "mov") == 0) {
     return MOV;
   }
-  else if (strcmp(instrString, "tst ") == 0) {
+  else if (strcmp(instrString, "tst") == 0) {
     return TST;
   }
-  else if (strcmp(instrString, "teq ") == 0) {
+  else if (strcmp(instrString, "teq") == 0) {
     return TEQ;
   }
-  else if (strcmp(instrString, "cmp ") == 0) {
+  else if (strcmp(instrString, "cmp") == 0) {
     return CMP;
   }
-  else if (strcmp(instrString, "mul ") == 0) {
+  else if (strcmp(instrString, "mul") == 0) {
     return MUL;
   }
-  else if (strcmp(instrString, "mla ") == 0) {
+  else if (strcmp(instrString, "mla") == 0) {
     return MLA;
   }
-  else if (strcmp(instrString, "ldr ") == 0) {
+  else if (strcmp(instrString, "ldr") == 0) {
     return LDR;
   }
-  else if (strcmp(instrString, "str ") == 0) {
+  else if (strcmp(instrString, "str") == 0) {
     return STR;
   }
-  else if (strcmp(instrString, "beq ") == 0) {
+  else if (strcmp(instrString, "beq") == 0) {
     return BEQ;
   }
-  else if (strcmp(instrString, "bne ") == 0) {
+  else if (strcmp(instrString, "bne") == 0) {
     return BNE;
   }
-  else if (strcmp(instrString, "bge ") == 0) {
+  else if (strcmp(instrString, "bge") == 0) {
     return BGE;
   }
-  else if (strcmp(instrString, "blt ") == 0) {
+  else if (strcmp(instrString, "blt") == 0) {
     return BLT;
   }
-  else if (strcmp(instrString, "bgt ") == 0) {
+  else if (strcmp(instrString, "bgt") == 0) {
     return BGT;
   }
-  else if (strcmp(instrString, "ble ") == 0) {
+  else if (strcmp(instrString, "ble") == 0) {
     return BLE;
   }
-  else if (strcmp(instrString, "b ") == 0) {
+  else if (strcmp(instrString, "b") == 0) {
     return B;
   }
-  else if (strcmp(instrString, "lsl ") == 0) {
+  else if (strcmp(instrString, "lsl") == 0) {
     return LSL;
   }
   else {
@@ -470,9 +470,9 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
     }
     instrNum++;
     if (feof(fptr)) {
+      fclose(fptr);
       break;
     }
-    fclose(fptr);
   }
 }
 
@@ -486,7 +486,7 @@ void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstruct
     uint32_t mask = 1 << 31;
     uint32_t bin = binaryInstructions[i];
 
-    fprintf(fptr, "Address : %08x    Binary instruction : ", (i * 0x4));
+    fprintf(fptr, "%08x", (i * 0x4));
 
     for (int i = 0; i < 32; i++) {
       if ((bin & mask) == 0) {
@@ -503,7 +503,6 @@ void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstruct
 
 
 int main(int argc, char *argv[]) {
-
   map_t *symbolTable = malloc(sizeof(map_t) * MAX_MAPS);
   int numOfInstructions = firstPass(argv[1], symbolTable);
   if (numOfInstructions == 0) {
@@ -511,7 +510,6 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   uint32_t *binaryInstructions = malloc(sizeof(uint32_t) * numOfInstructions);
-  printf("hello");
   secondPass(argv[1], symbolTable, binaryInstructions);
   writeBinary(argv[2], binaryInstructions, numOfInstructions);
   return EXIT_SUCCESS;
