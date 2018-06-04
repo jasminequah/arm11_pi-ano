@@ -19,6 +19,16 @@ typedef enum {
 	BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ,
 } instrName_t;
 
+uint32_t getMemAddress(map_t *symbolTable, char *remainingString) {
+	int currMap = 0;
+	while (true) {
+		map = *(symbolTable + currMap);
+    if (map.label == remainingString) {
+			return map.memAddress;
+		}
+		currMap += sizeof(map_t);
+	}
+}
 
 uint32_t parseDataProcessing(map_t *symbolTable, char *remainingString, instrName_t name) {
 	return 0;
@@ -41,7 +51,7 @@ uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t na
 	}
 
 	// code = 0x20e0 or 0x00e0
-	
+
 	//Rd
 	registers = strtok(remainingString, " ");
 	num = registers[1] - '0';
@@ -67,12 +77,31 @@ uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t na
 		code += (num << 5);
 		//code = 0x9MNS2De0 or 0x9MNS0De0
 	}
-	
+
 	return code;
 }
 
-uint32_t parseBranch(map_t *symbolTable, char *remainingString, instrName_t name) {
-	return 0;
+uint32_t parseBranch(map_t *symbolTable, char *remainingString, instrName_t name, int currAddress) {
+  int cond;
+	switch(name) {
+		case(BEQ) :
+		  cond = 0;
+		case(BNE) :
+		  cond = 1;
+		case(BGE) :
+		  cond = 10;
+		case(BLT) :
+		  cond = 11;
+		case(BGT) :
+		  cond = 12;
+		case(BLE) :
+		  cond = 13;
+	  case(B) :
+		  cond = 14;
+	}
+  uint32_t destAddress = getMemAddress(symbolTable, remainingString);
+	uint32_t offset      = destAddress - ((uint32_t) (currAddress) * 4);
+	return (cond << 28) | (10 << 24) | offset;
 }
 
 uint32_t parseSpecial(map_t *symbolTable, char *remainingString, instrName_t name) {
@@ -207,7 +236,7 @@ instrName_t toInstrName(char* instrString) {
 	else {
 		return ANDEQ;
 	}
-	
+
 }
 
 
@@ -228,11 +257,12 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 if (buffer[strLength - 1] != ':') {
 
 		 char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
-		 char *instrString = malloc((sizeof(char) * 3) + 1); //i think...
-		 instrString = strcpy(instrString, instrStringBuffer);
+     char *instrString = malloc((sizeof(char) * 3) + 1) //i think...
+		 strcpy(instrString, instrStringBuffer);
+
 		 char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
 		 char *remainingString = malloc((sizeof(char) * 4) + 1);
-		 remainingString = strcpy(remainingString, passedString);
+		 strcpy(remainingString, passedString);
 		 //the above code stores the remaining string on the heap so it can be
 		 //passed to the parse helper functions
 
@@ -289,25 +319,25 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 			   binaryInstructions[instrNum] = parseSpecial(symbolTable, remainingString, ANDEQ);
 			   break;
        case BEQ :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BEQ);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BEQ, instrNum * 4);
 			   break;
 			 case BNE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BNE);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BNE, instrNum * 4);
 			   break;
 			 case BGE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BGE);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BGE, instrNum * 4);
 			   break;
 			 case BLT :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BLT);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BLT, instrNum * 4);
 			   break;
 			 case BGT :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BGT);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BGT, instrNum * 4);
 			   break;
 			 case BLE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BLE);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BLE, instrNum * 4);
 			   break;
 			 case B :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, B);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, B, instrNum * 4);
 				 break;
 	 	}
 	 }
@@ -330,7 +360,7 @@ void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstruct
 
 		uint32_t mask = 1 << 31;
 		uint32_t bin = binaryInstructions[i];
-		fputs("Address : %08x    Binary instruction : ", (int) (i * 0x4));
+		fputs("Address : %08x    Binary instruction : ", (i * 0x4));
 
 		for (int i = 0; i < 32; i++) {
 			if ((bin & mask) == 0) {
