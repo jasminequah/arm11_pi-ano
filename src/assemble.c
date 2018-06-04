@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define MAX_MAPS 100
 #define MAX_INSTR_LEN 511
@@ -213,7 +214,7 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 }
 
 
-void writeBinary(char* filename, uint32_t *binaryInstructions, int numOfInstructions) {
+void writeBinary(char* fileMame, uint32_t *binaryInstructions, int numOfInstructions) {
 	FILE *fptr = fopen(fileName, "w");
 	assert(fptr != NULL);
 
@@ -221,7 +222,7 @@ void writeBinary(char* filename, uint32_t *binaryInstructions, int numOfInstruct
 
 		uint32_t mask = 1 << 31;
 		uint32_t bin = binaryInstructions[i];
-		fputs("Address : %08x    Binary instruction : ", (i * 0x4));
+		fputs("Address : %08x    Binary instruction : ", (int) (i * 0x4));
 
 		for (int i = 0; i < 32; i++) {
 			if ((bin & mask) == 0) {
