@@ -9,7 +9,7 @@
 #define MAX_SYMBOL_TABLE_SIZE 50
 
 typedef struct map {
-	char label[511];
+	char *label;
 	uint16_t memAddress;
 } map_t;
 
@@ -52,6 +52,16 @@ uint32_t parseSpecial(map_t *symbolTable, char *remainingString, instrName_t nam
 /*sample readfile statement
 returns the num of instructios (including labels) and stores instructions into
 symbol table */
+
+map_t newMap(char *label, uint16_t memAddress) {
+	char *labelOnHeap = malloc(511);
+	strcpy(labelOnHeap, label);
+	map_t map;
+	map.label = labelOnHeap;
+	map.memAddress = memAddress;
+	return map;
+}
+
 int firstPass(char* fileName, map_t *symbolTable) {
 
 	FILE *fptr = fopen(fileName, "r");
@@ -68,7 +78,7 @@ int firstPass(char* fileName, map_t *symbolTable) {
 				printf("exceeded symbolTableSize");
 				return 0;
 			}
-			map_t map = {buffer, memAddress}; //buffer includes the ':'
+			map_t map = newMap(buffer, memAddress); //buffer includes the ':'
 			symbolTable[tableSize] = map;
 			tableSize++;
 		} else {
@@ -111,7 +121,6 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 		 char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
      char *instrString = malloc((sizeof(char) * 3) + 1) //i think...
 		 instrString = strcpy(instrString, instrStringBuffer);
-
 		 char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
 		 char *remainingString = malloc((sizeof(char) * 4) + 1);
 		 remainingString = strcpy(remainingString, passedString);
