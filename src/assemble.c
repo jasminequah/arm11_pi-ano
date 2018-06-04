@@ -87,7 +87,7 @@ int firstPass(char* fileName, map_t *symbolTable) {
 	//returns TOTAL no. of instructions excluding labels
 }
 
-instrName_t toInstrName(char* intrString) {
+instrName_t toInstrName(char* instrString) {
 	return ADD;
 }
 
@@ -119,7 +119,7 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 		 //passed to the parse helper functions
 
 		 //TODO: convert instrString to a type instrName_t for the switch statement
-     instrName_t intrName = toInstrName(intrString);
+     instrName_t instrName = toInstrName(instrString);
 
 		 switch (instrName) {
 	   	 case ADD :
