@@ -30,20 +30,20 @@ uint32_t getMemAddress(map_t *symbolTable, char *remainingString) {
 	}
 }
 
-uint32_t parseDataProcessing(map_t *symbolTable, char *remainingString, instrName_t name) {
+uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name) {
 	return 0;
 }
 
-uint32_t parseSDT(map_t *symbolTable, char *remainingString, instrName_t name) {
+uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
 	return 0;
 }
 
-uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t name) {
+uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 
 	return 0;
 }
 
-uint32_t parseBranch(map_t *symbolTable, char *remainingString, instrName_t name, int currAddress) {
+uint32_t parseBranch(map_t *symbolTable, char **tokens, instrName_t name, int currAddress) {
   int cond;
 	switch(name) {
 		case(BEQ) :
@@ -66,7 +66,7 @@ uint32_t parseBranch(map_t *symbolTable, char *remainingString, instrName_t name
 	return (cond << 28) | (10 << 24) | offset;
 }
 
-uint32_t parseSpecial(map_t *symbolTable, char *remainingString, instrName_t name) {
+uint32_t parseSpecial(map_t *symbolTable, char **tokens, instrName_t name) {
 	return 0;
 }
 
@@ -117,7 +117,7 @@ int firstPass(char* fileName, map_t *symbolTable) {
 		}
 		memAddress += ADDR_INC;
 
-		if (feop(fptr)) {
+		if (feof(fptr)) {
 			break;
 		}
 	}
@@ -217,104 +217,121 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 fgets(buffer, MAX_INSTR_LEN, fptr);
 	 int strLength = strlen(buffer);
 	 if (buffer[strLength - 1] != ':') {
+		 char *tokens[5];
 
-		 char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
-     char *instrString = malloc((sizeof(char) * 3) + 1) //i think...
-		 strcpy(instrString, instrStringBuffer);
+		 /* TOKENIZE */
+		 const char delimiter[2] = ", ";
+		 tokens[0] = strtok(buffer, delimiter);
+	   int i = 0;
 
-		 char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
-		 char *remainingString = malloc((sizeof(char) * 4) + 1);
-		 strcpy(remainingString, passedString);
-		 //the above code stores the remaining string on the heap so it can be
-		 //passed to the parse helper functions
+	   while(1) {
+	     printf("%s\n", tokens[i]);
+	     i++;
+	     tokens[i] = strtok(NULL, delimiter);
+	     if (tokens[i] == NULL) {
+	       break;
+	     }
+	   }
 
-		 //TODO: convert instrString to a type instrName_t for the switch statement
-     instrName_t instrName = toInstrName(instrString);
+		 // char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
+     // char *instrString;
+		 //
+		 // if (strlen(instrStringBuffer) == 2) {
+			//  instrString = malloc(1 + 1);
+		 // } else {
+			//  instrString = malloc(3 + 1);
+		 // }
+		 //
+		 // strcpy(instrString, instrStringBuffer);
+		 //
+		 // char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
+		 // char *remainingString = malloc((sizeof(char) * 4) + 1);
+		 // strcpy(remainingString, passedString);
+
+     instrName_t instrName = toInstrName(tokens[0]);
 
 		 switch (instrName) {
 	   	 case ADD :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, ADD);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ADD);
 			   break;
 	 		 case SUB :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, SUB);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, SUB);
 			   break;
 	 		 case RSB :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, RSB);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, RSB);
 			   break;
 	 		 case AND :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, AND);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, AND);
 			   break;
 	 		 case EOR :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, EOR);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, EOR);
 			   break;
 	 		 case ORR :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, ORR);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ORR);
 			   break;
 	 		 case MOV :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, MOV);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, MOV);
 			   break;
 	 		 case TST :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, TST);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TST);
 			   break;
 	 		 case TEQ :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, TEQ);
+			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TEQ);
 		     break;
 	 		 case CMP :
-			 	binaryInstructions[instrNum] = parseDataProcessing(symbolTable, remainingString, CMP);
+			 	binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, CMP);
 			  break;
 			 case MUL :
-			   binaryInstructions[instrNum] = parseMultiply(symbolTable, remainingString, MUL);
+			   binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MUL);
 			   break;
 			 case MLA :
-			  binaryInstructions[instrNum] = parseMultiply(symbolTable, remainingString, MLA);
+			  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MLA);
 				break;
 			 case LDR :
-			  binaryInstructions[instrNum] = parseSDT(symbolTable, remainingString, LDR);
+			  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, LDR);
 			  break;
 			 case STR :
-			  binaryInstructions[instrNum] = parseSDT(symbolTable, remainingString, STR);
+			  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, STR);
 				break;
 			 case LSL :
-			   binaryInstructions[instrNum] = parseSpecial(symbolTable, remainingString, LSL);
+			   binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, LSL);
 			   break;
 			 case ANDEQ :
-			   binaryInstructions[instrNum] = parseSpecial(symbolTable, remainingString, ANDEQ);
+			   binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, ANDEQ);
 			   break;
        case BEQ :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BEQ, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BEQ, instrNum * 4);
 			   break;
 			 case BNE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BNE, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BNE, instrNum * 4);
 			   break;
 			 case BGE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BGE, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGE, instrNum * 4);
 			   break;
 			 case BLT :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BLT, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLT, instrNum * 4);
 			   break;
 			 case BGT :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BGT, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGT, instrNum * 4);
 			   break;
 			 case BLE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, BLE, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLE, instrNum * 4);
 			   break;
 			 case B :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, remainingString, B, instrNum * 4);
+			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, B, instrNum * 4);
 				 break;
 	 	}
 	 }
 	 instrNum++;
-	 if (feop(fptr)) {
+	 if (feof(fptr)) {
 		 break;
 	 }
-	 free(instrString);
-	 //I think we free the remainingString after the parse helper function executions
 	 fclose(fptr);
  }
 }
 
 
-void writeBinary(char* fileMame, uint32_t *binaryInstructions, int numOfInstructions) {
+void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstructions) {
 	FILE *fptr = fopen(fileName, "w");
 	assert(fptr != NULL);
 
@@ -322,7 +339,8 @@ void writeBinary(char* fileMame, uint32_t *binaryInstructions, int numOfInstruct
 
 		uint32_t mask = 1 << 31;
 		uint32_t bin = binaryInstructions[i];
-		fputs("Address : %08x    Binary instruction : ", (i * 0x4));
+
+		fprintf(fptr, "Address : %08x    Binary instruction : ", (i * 0x4));
 
 		for (int i = 0; i < 32; i++) {
 			if ((bin & mask) == 0) {
