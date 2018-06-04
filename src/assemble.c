@@ -11,18 +11,17 @@ typedef struct map {
 	uint16_t memAddress;
 } map_t;
 
-typedef struct instruction {
- 	/*instruction, rd, rn, rs, operand2, rm*/
-	instrName_t instrName;
-	int Rn;
-	int Rd;
-	in
- } instr_t;
+// typedef struct instruction {
+//  	/*instruction, rd, rn, rs, operand2, rm*/
+// 	instrName_t instrName;
+// 	int Rn;
+// 	int Rd;
+// 	in
+//  } instr_t;
 
 typdef enum {
-	ADD,
-	SUB,
-
+	ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR,
+	BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ
 } instrName_t
 
 
@@ -113,6 +112,7 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 fgets(buffer, MAX_INSTR_LEN, fptr);
 	 int strLength = strlen(buffer);
 	 if (buffer[strLength - 1] != ':') {
+
 		 char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
      char *instrString = malloc((sizeof(char) * 3) + 1) //i think...
 		 instrString = strcpy(instrString, instrStringBuffer);
@@ -209,18 +209,24 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 
 
 void writeBinary(char* filename, uint32_t *binaryInstructions int numOfInstructions) {
-	FILE *fptr = fopen(fileName, "r");
+	FILE *fptr = fopen(fileName, "w");
 	assert(fptr != NULL);
 
 	for (int i = 0; i < numOfInstructions; i++) {
-    /*TODO: print all the uint32s in binaryInstructions as binary along
-		with their address */
 
+		uint32_t mask = 1 << 31;
+		uint32_t bin = binaryInstructions[i];
+		fputs("Address : %08x    Binary instruction : ", (i * 0x4));
 
-		if (feop(fptr)) {
-			printf("No more instructions to read!\n", );
-			break;
+		for (int i = 0; i < 32; i++) {
+			if ((bin & mask) == 0) {
+				fputs("0", fptr);
+			} else {
+				fputs("1", fptr);
+			}
 		}
+		fputs("\n", fptr);
+
 	}
 	fclose(fptr);
 }
