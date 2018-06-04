@@ -13,7 +13,7 @@ typedef struct map {
 	uint16_t memAddress;
 } map_t;
 
-typdef enum {
+typedef enum {
 	ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR,
 	BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ,
 } instrName_t;
@@ -220,9 +220,9 @@ void writeBinary(char* filename, uint32_t *binaryInstructions, int numOfInstruct
 			} else {
 				fputs("1", fptr);
 			}
+			mask = mask >> 1;
 		}
 		fputs("\n", fptr);
-
 	}
 	fclose(fptr);
 }
