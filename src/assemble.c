@@ -44,10 +44,10 @@ uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t na
 	char* registers;
 	int num;
 	if (name == MUL) {
-		code += (0x0 << 3);
+		code += (0x0 << 12);
 	}
 	else {
-		code += (0x2 << 3);
+		code += (0x2 << 12);
 	}
 
 	// code = 0x20e0 or 0x00e0
@@ -55,26 +55,26 @@ uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t na
 	//Rd
 	registers = strtok(remainingString, " ");
 	num = registers[1] - '0';
-	code += (num << 2);
+	code += (num << 8);
 	// code = 0x2De0 or 0x0De0
 
 	//Rm
 	registers = strtok(NULL, " ");
 	num = registers[1] - '0';
-	code += (((0x9 << 1) + num) << 6);
+	code += (((0x9 << 4) + num) << 24);
 	//code = 0x9M002De0 or 0x9M000De0
 
 	//Rs
 	registers = strtok(NULL, " ");
 	num = registers[1] - '0';
-	code += (num << 4);
+	code += (num << 16);
 	//code = 0x9M0S2De0 or 0x9M0S0De0
 
 	if (name == MLA) {
 		//Rn
 		registers = strtok(NULL, " ");
 		num = registers[1] - '0';
-		code += (num << 5);
+		code += (num << 20);
 		//code = 0x9MNS2De0 or 0x9MNS0De0
 	}
 
