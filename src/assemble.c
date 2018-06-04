@@ -79,7 +79,43 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
 }
 
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
-  return 0;
+	uint32_t binInstr = 0x04000000;
+	uint32_t cond;
+	char* rd = tokens[1];
+	uint32_t rdNum = atoi(&rd[1]) << 12;
+	uint32_t l;
+	uint32_t p;
+	uint32_t u;
+	uint32_t i;
+	uint32_t rn;
+	uint32_t offset;
+
+  if (tokens[2][strlen(tokens[2]) - 1] == ']') {
+		//pre-indexing - p is set
+		p = 0x01000000;
+	} else {
+		p = 0x00000000;
+	}
+
+	switch (name) {
+		case STR :
+			l = 0x00000000;
+		case LDR :
+		  l = 0x00100000; // check
+			if (tokens[2][0] == '=') {
+				if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
+
+				} else {
+
+				}
+				//treat address as numerican constant
+
+			}
+
+	}
+
+	binInstr = binInstr | cond | rdNum | l | p | u | i | rn | offset;
+	return binInstr;
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
