@@ -99,7 +99,76 @@ int firstPass(char* fileName, map_t *symbolTable) {
 }
 
 instrName_t toInstrName(char* instrString) {
-	return ADD;
+	if (strcmp(instrString, "add ") == 0) {
+		return ADD;
+	}
+	else if (strcmp(instrString, "sub ") == 0) {
+		return SUB;
+	}
+	else if (strcmp(instrString, "rsb ") == 0) {
+		return RSB;
+	}
+	else if (strcmp(instrString, "and ") == 0) {
+		return AND;
+	}
+	else if (strcmp(instrString, "eor ") == 0) {
+		return EOR;
+	}
+	else if (strcmp(instrString, "orr ") == 0) {
+		return ORR;
+	}
+	else if (strcmp(instrString, "mov ") == 0) {
+		return MOV;
+	}
+	else if (strcmp(instrString, "tst ") == 0) {
+		return TST;
+	}
+	else if (strcmp(instrString, "teq ") == 0) {
+		return TEQ;
+	}
+	else if (strcmp(instrString, "cmp ") == 0) {
+		return CMP;
+	}
+	else if (strcmp(instrString, "mul ") == 0) {
+		return MUL;
+	}
+	else if (strcmp(instrString, "mla ") == 0) {
+		return MLA;
+	}
+	else if (strcmp(instrString, "ldr ") == 0) {
+		return LDR;
+	}
+	else if (strcmp(instrString, "str ") == 0) {
+		return STR;
+	}
+	else if (strcmp(instrString, "beq ") == 0) {
+		return BEQ;
+	}
+	else if (strcmp(instrString, "bne ") == 0) {
+		return BNE;
+	}
+	else if (strcmp(instrString, "bge ") == 0) {
+		return BGE;
+	}
+	else if (strcmp(instrString, "blt ") == 0) {
+		return BLT;
+	}
+	else if (strcmp(instrString, "bgt ") == 0) {
+		return BGT;
+	}
+	else if (strcmp(instrString, "ble ") == 0) {
+		return BLE;
+	}
+	else if (strcmp(instrString, "b ") == 0) {
+		return B;
+	}
+	else if (strcmp(instrString, "lsl ") == 0) {
+		return LSL;
+	}
+	else {
+		return ANDEQ;
+	}
+	
 }
 
 
