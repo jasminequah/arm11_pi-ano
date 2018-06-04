@@ -9,39 +9,80 @@
 #define ADDR_INC 0x4
 #define MAX_SYMBOL_TABLE_SIZE 50
 
+#define S_BIT 0x00080000;
+
+
 typedef struct map {
-	char *label;
-	uint16_t memAddress;
+  char *label;
+  uint16_t memAddress;
 } map_t;
 
 typedef enum {
-	ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR,
-	BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ,
+  ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR,
+  BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ,
 } instrName_t;
 
-uint32_t getMemAddress(map_t *symbolTable, char *remainingString) {
-	int currMap = 0;
-	while (true) {
-		map = *(symbolTable + currMap);
-    if (map.label == remainingString) {
-			return map.memAddress;
-		}
-		currMap += sizeof(map_t);
-	}
+uint32_t getMemAddress(map_t *symbolTable, char *label) {
+  int currMap = 0;
+  while (1) {
+    map_t map = *(symbolTable + currMap);
+    if (map.label == label) {
+      return map.memAddress;
+    }
+    currMap += sizeof(map_t);
+  }
 }
 
 uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name) {
-	return 0;
+  int opCode;
+  uint32_t instruction = 0xd0000000;
+  switch(name) {
+    case AND:
+      opCode = 0;
+      break;
+    case EOR:
+      opCode = 1;
+      break;
+    case SUB:
+      opCode = 2;
+      break;
+    case RSB:
+      opCode = 3;
+      break;
+    case ADD:
+      opCode = 4;
+      break;
+    case ORR:
+      opCode = 12;
+      break;
+    case MOV:
+      opCode = 13;
+      break;
+    case TST:
+      opCode = 8;
+      instruction = instruction | S_BIT;
+      break;
+    case TEQ:
+      opCode = 9;
+      instruction = instruction | S_BIT;
+      break;
+    case CMP:
+      opCode = 10;
+      instruction = instruction | S_BIT;
+      break;
+    default:
+      // Should return an error
+      opCode = -1;
+      break;
+  }
+  return 0;
 }
 
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
-	return 0;
+  return 0;
 }
 
-<<<<<<< HEAD
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
-=======
-uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t name) {
 	// mul r2, r1, r0 = 0x910002e0
 	uint32_t code = 0xe0;
 	char* registers;
@@ -52,7 +93,6 @@ uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t na
 	else {
 		code += (0x2 << 3);
 	}
->>>>>>> 4b0b6ea7550faffe594fdb54e4463f7a0bf029db
 
 	// code = 0x20e0 or 0x00e0
 
@@ -87,25 +127,36 @@ uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t na
 
 uint32_t parseBranch(map_t *symbolTable, char **tokens, instrName_t name, int currAddress) {
   int cond;
-	switch(name) {
-		case(BEQ) :
-		  cond = 0;
-		case(BNE) :
-		  cond = 1;
-		case(BGE) :
-		  cond = 10;
-		case(BLT) :
-		  cond = 11;
-		case(BGT) :
-		  cond = 12;
-		case(BLE) :
-		  cond = 13;
-	  case(B) :
-		  cond = 14;
-	}
-  uint32_t destAddress = getMemAddress(symbolTable, remainingString);
-	uint32_t offset      = destAddress - ((uint32_t) (currAddress) * 4);
-	return (cond << 28) | (10 << 24) | offset;
+    switch(name) {
+      case BEQ:
+        cond = 0;
+        break;
+      case BNE:
+        cond = 1;
+        break;
+      case BGE:
+        cond = 10;
+        break;
+      case BLT:
+        cond = 11;
+        break;
+      case BGT:
+        cond = 12;
+        break;
+      case BLE:
+        cond = 13;
+        break;
+      case B:
+        cond = 14;
+        break;
+      default:
+        // Should return an error
+        cond = -1;
+        break;
+    }
+  uint32_t destAddress = getMemAddress(symbolTable, tokens[0]);
+  uint32_t offset      = destAddress - ((uint32_t) (currAddress) * 4);
+  return (cond << 28) | (10 << 24) | offset;
 }
 
 uint32_t parseSpecial(map_t *symbolTable, char **tokens, instrName_t name) {
@@ -127,25 +178,25 @@ returns the num of instructios (including labels) and stores instructions into
 symbol table */
 
 map_t newMap(char *label, uint16_t memAddress) {
-	char *labelOnHeap = malloc(511);
-	strcpy(labelOnHeap, label);
-	map_t map;
-	map.label = labelOnHeap;
-	map.memAddress = memAddress;
-	return map;
+  char *labelOnHeap = malloc(511);
+  strcpy(labelOnHeap, label);
+  map_t map;
+  map.label = labelOnHeap;
+  map.memAddress = memAddress;
+  return map;
 }
 
 int firstPass(char* fileName, map_t *symbolTable) {
 
-	FILE *fptr = fopen(fileName, "r");
-	uint16_t memAddress = 0x0; //check if it is 16 bits
-	int tableSize= 0;
-	int numOfInstr = 0;
+  FILE *fptr = fopen(fileName, "r");
+  uint16_t memAddress = 0x0; //check if it is 16 bits
+  int tableSize= 0;
+  int numOfInstr = 0;
 
-	while(1) {
-		char buffer[MAX_INSTR_LEN];
-		fgets(buffer, MAX_INSTR_LEN, fptr);
-		int strLength = strlen(buffer + 1); //for the \0 char
+  while(1) {
+    char buffer[MAX_INSTR_LEN];
+    fgets(buffer, MAX_INSTR_LEN, fptr);
+    int strLength = strlen(buffer + 1); //for the \0 char
     if (buffer[strLength - 1] == ':') {
 			if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
 				printf("exceeded symbolTableSize");
@@ -171,75 +222,75 @@ int firstPass(char* fileName, map_t *symbolTable) {
 }
 
 instrName_t toInstrName(char* instrString) {
-	if (strcmp(instrString, "add ") == 0) {
-		return ADD;
-	}
-	else if (strcmp(instrString, "sub ") == 0) {
-		return SUB;
-	}
-	else if (strcmp(instrString, "rsb ") == 0) {
-		return RSB;
-	}
-	else if (strcmp(instrString, "and ") == 0) {
-		return AND;
-	}
-	else if (strcmp(instrString, "eor ") == 0) {
-		return EOR;
-	}
-	else if (strcmp(instrString, "orr ") == 0) {
-		return ORR;
-	}
-	else if (strcmp(instrString, "mov ") == 0) {
-		return MOV;
-	}
-	else if (strcmp(instrString, "tst ") == 0) {
-		return TST;
-	}
-	else if (strcmp(instrString, "teq ") == 0) {
-		return TEQ;
-	}
-	else if (strcmp(instrString, "cmp ") == 0) {
-		return CMP;
-	}
-	else if (strcmp(instrString, "mul ") == 0) {
-		return MUL;
-	}
-	else if (strcmp(instrString, "mla ") == 0) {
-		return MLA;
-	}
-	else if (strcmp(instrString, "ldr ") == 0) {
-		return LDR;
-	}
-	else if (strcmp(instrString, "str ") == 0) {
-		return STR;
-	}
-	else if (strcmp(instrString, "beq ") == 0) {
-		return BEQ;
-	}
-	else if (strcmp(instrString, "bne ") == 0) {
-		return BNE;
-	}
-	else if (strcmp(instrString, "bge ") == 0) {
-		return BGE;
-	}
-	else if (strcmp(instrString, "blt ") == 0) {
-		return BLT;
-	}
-	else if (strcmp(instrString, "bgt ") == 0) {
-		return BGT;
-	}
-	else if (strcmp(instrString, "ble ") == 0) {
-		return BLE;
-	}
-	else if (strcmp(instrString, "b ") == 0) {
-		return B;
-	}
-	else if (strcmp(instrString, "lsl ") == 0) {
-		return LSL;
-	}
-	else {
-		return ANDEQ;
-	}
+  if (strcmp(instrString, "add ") == 0) {
+    return ADD;
+  }
+  else if (strcmp(instrString, "sub ") == 0) {
+    return SUB;
+  }
+  else if (strcmp(instrString, "rsb ") == 0) {
+    return RSB;
+  }
+  else if (strcmp(instrString, "and ") == 0) {
+    return AND;
+  }
+  else if (strcmp(instrString, "eor ") == 0) {
+    return EOR;
+  }
+  else if (strcmp(instrString, "orr ") == 0) {
+    return ORR;
+  }
+  else if (strcmp(instrString, "mov ") == 0) {
+    return MOV;
+  }
+  else if (strcmp(instrString, "tst ") == 0) {
+    return TST;
+  }
+  else if (strcmp(instrString, "teq ") == 0) {
+    return TEQ;
+  }
+  else if (strcmp(instrString, "cmp ") == 0) {
+    return CMP;
+  }
+  else if (strcmp(instrString, "mul ") == 0) {
+    return MUL;
+  }
+  else if (strcmp(instrString, "mla ") == 0) {
+    return MLA;
+  }
+  else if (strcmp(instrString, "ldr ") == 0) {
+    return LDR;
+  }
+  else if (strcmp(instrString, "str ") == 0) {
+    return STR;
+  }
+  else if (strcmp(instrString, "beq ") == 0) {
+    return BEQ;
+  }
+  else if (strcmp(instrString, "bne ") == 0) {
+    return BNE;
+  }
+  else if (strcmp(instrString, "bge ") == 0) {
+    return BGE;
+  }
+  else if (strcmp(instrString, "blt ") == 0) {
+    return BLT;
+  }
+  else if (strcmp(instrString, "bgt ") == 0) {
+    return BGT;
+  }
+  else if (strcmp(instrString, "ble ") == 0) {
+    return BLE;
+  }
+  else if (strcmp(instrString, "b ") == 0) {
+    return B;
+  }
+  else if (strcmp(instrString, "lsl ") == 0) {
+    return LSL;
+  }
+  else {
+    return ANDEQ;
+  }
 
 }
 
@@ -368,11 +419,6 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 if (feof(fptr)) {
 		 break;
 	 }
-<<<<<<< HEAD
-=======
-	 //free(instrString);
-	 //I think we free the remainingString after the parse helper function executions
->>>>>>> 4b0b6ea7550faffe594fdb54e4463f7a0bf029db
 	 fclose(fptr);
  }
 }
@@ -405,14 +451,14 @@ void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstruct
 
 int main(int argc, char *argv[]) {
 
-	map_t *symbolTable = malloc(sizeof(map_t) * MAX_MAPS);
-	int numOfInstructions = firstPass(argv[1], symbolTable);
-	if (numOfInstructions == 0) {
-		printf("No instructions read");
-		return EXIT_FAILURE;
-	}
+  map_t *symbolTable = malloc(sizeof(map_t) * MAX_MAPS);
+  int numOfInstructions = firstPass(argv[1], symbolTable);
+  if (numOfInstructions == 0) {
+    printf("No instructions read");
+    return EXIT_FAILURE;
+  }
   uint32_t *binaryInstructions = malloc(sizeof(uint32_t) * numOfInstructions);
-	secondPass(argv[1], symbolTable, binaryInstructions);
+  secondPass(argv[1], symbolTable, binaryInstructions);
   writeBinary(argv[2], binaryInstructions, numOfInstructions);
 
   return EXIT_SUCCESS;
