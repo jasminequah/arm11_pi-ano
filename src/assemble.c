@@ -29,6 +29,7 @@ uint32_t parseSDT(map_t *symbolTable, char *remainingString, instrName_t name) {
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char *remainingString, instrName_t name) {
+
 	return 0;
 }
 
