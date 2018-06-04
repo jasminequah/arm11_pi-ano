@@ -1,28 +1,22 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_MAPS 100
 #define MAX_INSTR_LEN 511
 #define ADDR_INC 0x4
+#define MAX_SYMBOL_TABLE_SIZE 50
 
 typedef struct map {
 	char label[511];
 	uint16_t memAddress;
 } map_t;
 
-// typedef struct instruction {
-//  	/*instruction, rd, rn, rs, operand2, rm*/
-// 	instrName_t instrName;
-// 	int Rn;
-// 	int Rd;
-// 	in
-//  } instr_t;
-
 typdef enum {
 	ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR,
-	BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ
-} instrName_t
+	BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ,
+} instrName_t;
 
 
 uint32_t parseDataProcessing(map_t *symbolTable, char *remainingString, instrName_t name) {
@@ -58,7 +52,7 @@ uint32_t parseSpecial(map_t *symbolTable, char *remainingString, instrName_t nam
 /*sample readfile statement
 returns the num of instructios (including labels) and stores instructions into
 symbol table */
-int firstPass(char* fileName, map_t *symbolTable, int symbolTableSize) {
+int firstPass(char* fileName, map_t *symbolTable) {
 
 	FILE *fptr = fopen(fileName, "r");
 	uint16_t memAddress = 0x0; //check if it is 16 bits
@@ -70,7 +64,7 @@ int firstPass(char* fileName, map_t *symbolTable, int symbolTableSize) {
 		fgets(buffer, MAX_INSTR_LEN, fptr);
 		int strLength = strlen(buffer + 1); //for the \0 char
     if (buffer[strLength - 1] == ':') {
-			if (tableSize >= symbolTableSize) {
+			if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
 				printf("exceeded symbolTableSize");
 				return 0;
 			}
@@ -105,6 +99,7 @@ instrName_t toInstrName(char* intrString) {
 void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions) {
  //keep track of order of the instructions, pass instruNumber into
  //parse so that it knows which index you write to in the binaryInstructions
+ FILE *fptr = fopen(fileName, "r");
  int instrNum = 0;
 
  while(1) {
@@ -204,11 +199,12 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 }
 	 free(instrString);
 	 //I think we free the remainingString after the parse helper function executions
+	 fclose(fptr);
  }
 }
 
 
-void writeBinary(char* filename, uint32_t *binaryInstructions int numOfInstructions) {
+void writeBinary(char* filename, uint32_t *binaryInstructions, int numOfInstructions) {
 	FILE *fptr = fopen(fileName, "w");
 	assert(fptr != NULL);
 
