@@ -265,6 +265,7 @@ int firstPass(char* fileName, map_t *symbolTable) {
         printf("exceeded symbolTableSize");
         return 0;
       }
+      buffer = strtok(buffer, ": ");
       map_t map = newMap(buffer, memAddress); //buffer includes the ':'
       symbolTable[tableSize] = map;
       tableSize++;
