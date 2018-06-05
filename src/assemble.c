@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define MAX_MAPS 100
+#define MAX_MAPS 10
 #define MAX_INSTR_LEN 511
 #define ADDR_INC 0x4
 #define MAX_SYMBOL_TABLE_SIZE 50
@@ -44,18 +44,24 @@ void setReg(dataProcType_t instrType, char **tokens, uint32_t instruction) {
 
   switch(instrType) {
     case COMP_RESULT:
-      rd          = atoi(&tokens[1][1]);
-      rn          = atoi(&tokens[2][1]);
+      if (&tokens[1][1] != NULL && &tokens[2][1] != NULL) {
+        rd          = atoi(&tokens[1][1]);
+        rn          = atoi(&tokens[2][1]);
+      }
       operand2    = getOperand(tokens[3] + sizeof(char));
       instruction = instruction | (rn << 16) | (rd << 12) | operand2;
       break;
     case SINGLE_OP_ASS:
-      rd          = atoi(&tokens[1][1]);
+      if (&tokens[1][1] != NULL) {
+        rd          = atoi(&tokens[1][1]);
+      }
       operand2    = getOperand(tokens[2] + sizeof(char));
       instruction = instruction | (rd << 12) | operand2;
       break;
     case SET_CPSR:
-      rn          = atoi(&tokens[1][1]);
+      if (&tokens[1][1] != NULL) {
+        rn          = atoi(&tokens[1][1]);
+      }
       operand2    = getOperand(tokens[2] + sizeof(char));
       instruction = instruction | (rn << 16) | operand2;
   }
@@ -86,41 +92,41 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
       break;
     case EOR:
       opCode = 1;
-      setReg(COMP_RESULT, tokens, instruction);
+//      setReg(COMP_RESULT, tokens, instruction);
       break;
     case SUB:
       opCode = 2;
-      setReg(COMP_RESULT, tokens, instruction);
+//      setReg(COMP_RESULT, tokens, instruction);
       break;
     case RSB:
       opCode = 3;
-      setReg(COMP_RESULT, tokens, instruction);
+//      setReg(COMP_RESULT, tokens, instruction);
       break;
     case ADD:
       opCode = 4;
-      setReg(COMP_RESULT, tokens, instruction);
+//      setReg(COMP_RESULT, tokens, instruction);
       break;
     case ORR:
       opCode = 12;
-      setReg(COMP_RESULT, tokens, instruction);
+//      setReg(COMP_RESULT, tokens, instruction);
       break;
     case MOV:
       opCode = 13;
-      setReg(SINGLE_OP_ASS, tokens, instruction);
+//      setReg(SINGLE_OP_ASS, tokens, instruction);
       break;
     case TST:
       opCode = 8;
-      setReg(SET_CPSR, tokens, instruction);
+//      setReg(SET_CPSR, tokens, instruction);
       instruction = instruction | S_BIT;
       break;
     case TEQ:
       opCode = 9;
-      setReg(SET_CPSR, tokens, instruction);
+//      setReg(SET_CPSR, tokens, instruction);
       instruction = instruction | S_BIT;
       break;
     case CMP:
       opCode = 10;
-      setReg(SET_CPSR, tokens, instruction);
+ //     setReg(SET_CPSR, tokens, instruction);
       instruction = instruction | S_BIT;
       break;
     default:
@@ -249,8 +255,8 @@ int firstPass(char* fileName, map_t *symbolTable) {
 
   while(1) {
     char buffer[MAX_INSTR_LEN];
-    fgets(buffer, MAX_INSTR_LEN, fptr);
-    int strLength = strlen(buffer + 1); //for the \0 char
+    fscanf(fptr, " %[^\n]", buffer);
+    int strLength = strlen(buffer) + 1; //for the \0 char
     if (buffer[strLength - 1] == ':') {
       if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
         printf("exceeded symbolTableSize");
@@ -358,13 +364,12 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
  //parse so that it knows which index you write to in the binaryInstructions
   FILE *fptr = fopen(fileName, "r");
   int instrNum = 0;
-
   while(1) {
     char buffer[MAX_INSTR_LEN];
-    fgets(buffer, MAX_INSTR_LEN, fptr);
+    fscanf(fptr, " %[^\n]s", buffer);
     int strLength = strlen(buffer);
-    if (buffer[strLength - 1] != ':') {
-      char *tokens[5];
+    if (buffer[strLength - 2] != ':') {
+      char **tokens = malloc(sizeof(char *) * 10);
 
       /* TOKENIZE */
       const char delimiter[2] = ", ";
@@ -373,12 +378,11 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 
       while(1) {
 	i++;
-	tokens[i] = strtok(NULL, delimiter);
-	if (tokens[i] == NULL) {
+        if (tokens[i] == NULL) {
           break;
-	}
+        }
+	tokens[i] = strtok(NULL, delimiter);
       }
-
       // char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
       // char *instrString;
       //
@@ -395,7 +399,6 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
       // strcpy(remainingString, passedString);
 
       instrName_t instrName = toInstrName(tokens[0]);
-
       switch (instrName) {
         case ADD :
 	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ADD);
@@ -467,8 +470,9 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, B, instrNum * 4);
 	  break;
       }
+      instrNum++;
+      free(tokens);
     }
-    instrNum++;
     if (feof(fptr)) {
       fclose(fptr);
       break;
@@ -512,5 +516,6 @@ int main(int argc, char *argv[]) {
   uint32_t *binaryInstructions = malloc(sizeof(uint32_t) * numOfInstructions);
   secondPass(argv[1], symbolTable, binaryInstructions);
   writeBinary(argv[2], binaryInstructions, numOfInstructions);
+  free(symbolTable);
   return EXIT_SUCCESS;
 }
