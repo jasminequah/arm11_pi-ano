@@ -256,6 +256,9 @@ int firstPass(char* fileName, map_t *symbolTable) {
   while(1) {
     char buffer[MAX_INSTR_LEN];
     fscanf(fptr, " %[^\n]", buffer);
+    if (feof(fptr)) {
+      break;
+    }
     int strLength = strlen(buffer) + 1; //for the \0 char
     if (buffer[strLength - 1] == ':') {
       if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
@@ -270,9 +273,6 @@ int firstPass(char* fileName, map_t *symbolTable) {
     }
     memAddress += ADDR_INC;
 
-    if (feof(fptr)) {
-      break;
-    }
   }
 
   fclose(fptr);
@@ -469,8 +469,7 @@ void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstruct
   assert(fptr != NULL);
 
   for (int i = 0; i < numOfInstructions; i++) {
-    // printf("%x\n", binaryInstructions[i]);
-    // fprintf(fptr, "%08x\n", binaryInstructions[i]); //check endian form
+
     fwrite(&binaryInstructions[i], 4, 1, fptr);
   }
   fclose(fptr);
