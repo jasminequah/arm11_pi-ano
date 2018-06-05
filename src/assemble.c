@@ -78,7 +78,11 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
   return 0;
 }
 
+
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
+
+  int numOfTokens = sizeof(tokens) /
+
 	uint32_t binInstr = 0x04000000;
 	uint32_t cond;
 	char* rd = tokens[1];
@@ -90,9 +94,21 @@ uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
 	uint32_t rn;
 	uint32_t offset;
 
-  if (tokens[2][strlen(tokens[2]) - 1] == ']') {
+  if (tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']') {
 		//pre-indexing - p is set
 		p = 0x01000000;
+		if (tokens[2][3] == ']') {
+			tokens[2][3] = '\0';
+		}
+		rn = atoi(&tokens[2][2]) << 16;
+
+    if (tokens[3][strlen(tokens[3]) - 1] == ']') {
+			tokens[3][strlen(tokens[3]) - 1] = '\0';
+			offset = atoi(&tokens[3][2]);
+		} else {
+			offset = 0;
+		}
+
 	} else {
 		p = 0x00000000;
 	}
@@ -104,9 +120,10 @@ uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
 		  l = 0x00100000; // check
 			if (tokens[2][0] == '=') {
 				if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
-
+					return parseDataProcessing(symbolTable, tokens, MOV);
+					i = 0x00000000;
 				} else {
-
+					i = 0x02000000;
 				}
 				//treat address as numerican constant
 
@@ -362,21 +379,6 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	     }
 	   }
 
-		 // char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
-     // char *instrString;
-		 //
-		 // if (strlen(instrStringBuffer) == 2) {
-			//  instrString = malloc(1 + 1);
-		 // } else {
-			//  instrString = malloc(3 + 1);
-		 // }
-		 //
-		 // strcpy(instrString, instrStringBuffer);
-		 //
-		 // char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
-		 // char *remainingString = malloc((sizeof(char) * 4) + 1);
-		 // strcpy(remainingString, passedString);
-
      instrName_t instrName = toInstrName(tokens[0]);
 
 		 switch (instrName) {
@@ -455,8 +457,9 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 if (feof(fptr)) {
 		 break;
 	 }
-	 fclose(fptr);
+
  }
+ fclose(fptr);
 }
 
 
