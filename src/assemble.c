@@ -138,8 +138,59 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
   return 0;
 }
 
+
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
-  return 0;
+
+	uint32_t binInstr = 0x04000000;
+	uint32_t cond;
+	char* rd = tokens[1];
+	uint32_t rdNum = atoi(&rd[1]) << 12;
+	uint32_t l;
+	uint32_t p;
+	uint32_t u;
+	uint32_t i;
+	uint32_t rn;
+	uint32_t offset;
+
+  if (tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']') {
+		//pre-indexing - p is set
+		p = 0x01000000;
+		if (tokens[2][3] == ']') {
+			tokens[2][3] = '\0';
+		}
+		rn = atoi(&tokens[2][2]) << 16;
+
+    if (tokens[3][strlen(tokens[3]) - 1] == ']') {
+			tokens[3][strlen(tokens[3]) - 1] = '\0';
+			offset = atoi(&tokens[3][2]);
+		} else {
+			offset = 0;
+		}
+
+	} else {
+		p = 0x00000000;
+	}
+
+	switch (name) {
+		case STR :
+			l = 0x00000000;
+		case LDR :
+		  l = 0x00100000; // check
+			if (tokens[2][0] == '=') {
+				if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
+					return parseDataProcessing(symbolTable, tokens, MOV);
+					i = 0x00000000;
+				} else {
+					i = 0x02000000;
+				}
+				//treat address as numerican constant
+
+			}
+
+	}
+
+	binInstr = binInstr | cond | rdNum | l | p | u | i | rn | offset;
+	return binInstr;
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
@@ -256,12 +307,16 @@ int firstPass(char* fileName, map_t *symbolTable) {
   while(1) {
     char buffer[MAX_INSTR_LEN];
     fscanf(fptr, " %[^\n]", buffer);
+    if (feof(fptr)) {
+      break;
+    }
     int strLength = strlen(buffer) + 1; //for the \0 char
     if (buffer[strLength - 1] == ':') {
       if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
         printf("exceeded symbolTableSize");
         return 0;
       }
+      buffer = strtok(buffer, ": ");
       map_t map = newMap(buffer, memAddress); //buffer includes the ':'
       symbolTable[tableSize] = map;
       tableSize++;
@@ -270,9 +325,6 @@ int firstPass(char* fileName, map_t *symbolTable) {
     }
     memAddress += ADDR_INC;
 
-    if (feof(fptr)) {
-      break;
-    }
   }
 
   fclose(fptr);
@@ -469,8 +521,7 @@ void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstruct
   assert(fptr != NULL);
 
   for (int i = 0; i < numOfInstructions; i++) {
-    // printf("%x\n", binaryInstructions[i]);
-    // fprintf(fptr, "%08x\n", binaryInstructions[i]); //check endian form
+
     fwrite(&binaryInstructions[i], 4, 1, fptr);
   }
   fclose(fptr);
