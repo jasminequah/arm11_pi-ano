@@ -30,6 +30,22 @@
 #define C_BIT 0x20000000
 #define V_BIT 0x10000000
 
+/*Shift amounts for the registers*/
+#define RN_SHIFT 12
+#define RD_SHIFT 16
+#define RM_SHIFT 28
+#define OFFSET_SHIFT 20
+#define RS_SHIFT 20
+#define PC_SHIFT 28
+
+/*Bit masks for I,S,A,P,etc*/
+#define IS_I 0x02000000u
+#define IS_S 0x00100000u
+#define IS_P 0x01000000u
+#define IS_U 0x00800000u
+#define IS_L 0x00100000u
+#define IS_A 0x00200000u
+
 /* Instructions */
 typedef enum {
   DATA_PROCESSING,

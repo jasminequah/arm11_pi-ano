@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define MAX_MAPS 100
+#define MAX_MAPS 10
 #define MAX_INSTR_LEN 511
 #define ADDR_INC 0x4
 #define MAX_SYMBOL_TABLE_SIZE 50
 
 #define S_BIT 0x00080000;
-
+#define I_BIT 0x02000000;
 
 typedef struct map {
   char *label;
@@ -21,6 +21,51 @@ typedef enum {
   ADD, SUB, RSB, AND, EOR, ORR, MOV, TST, TEQ, CMP, MUL, MLA, LDR, STR,
   BEQ, BNE, BGE, BLT, BGT, BLE, B, LSL, ANDEQ,
 } instrName_t;
+
+typedef enum {
+  COMP_RESULT, SINGLE_OP_ASS, SET_CPSR,
+} dataProcType_t;
+
+uint32_t getOperand(char *expression) {
+  char *endPtr;
+  if (strncmp("0x", expression, 2) == 0) {
+    // Numeric constant in hexadecimal
+    return strtol(expression + 2 * (sizeof(char)), &endPtr, 16);
+  } else {
+    // Numeric constant in decimal
+    return strtol(expression, &endPtr, 10);
+  }
+}
+
+// void setReg(dataProcType_t instrType, char **tokens, uint32_t instruction) {
+//   uint32_t rd;
+//   uint32_t rn;
+//   uint32_t operand2;
+//
+//   switch(instrType) {
+//     case COMP_RESULT:
+//       if (&tokens[1][1] != NULL && &tokens[2][1] != NULL) {
+//         rd          = atoi(&tokens[1][1]);
+//         rn          = atoi(&tokens[2][1]);
+//       }
+//       operand2    = getOperand(tokens[3] + sizeof(char));
+//       instruction = instruction | (rn << 16) | (rd << 12) | operand2;
+//       break;
+//     case SINGLE_OP_ASS:
+//       if (&tokens[1][1] != NULL) {
+//         rd          = atoi(&tokens[1][1]);
+//       }
+//       operand2    = getOperand(tokens[2] + sizeof(char));
+//       instruction = instruction | (rd << 12) | operand2;
+//       break;
+//     case SET_CPSR:
+//       if (&tokens[1][1] != NULL) {
+//         rn          = atoi(&tokens[1][1]);
+//       }
+//       operand2    = getOperand(tokens[2] + sizeof(char));
+//       instruction = instruction | (rn << 16) | operand2;
+//   }
+// }
 
 uint32_t getMemAddress(map_t *symbolTable, char *label) {
   int currMap = 0;
@@ -33,53 +78,119 @@ uint32_t getMemAddress(map_t *symbolTable, char *label) {
   }
 }
 
+/* Does not support case when operand2 is a shift so sets I bit */
 uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name) {
-  // int opCode;
-  // uint32_t instruction = 0xd0000000;
-  // switch(name) {
-  //   case AND:
-  //     opCode = 0;
-  //     break;
-  //   case EOR:
-  //     opCode = 1;
-  //     break;
-  //   case SUB:
-  //     opCode = 2;
-  //     break;
-  //   case RSB:
-  //     opCode = 3;
-  //     break;
-  //   case ADD:
-  //     opCode = 4;
-  //     break;
-  //   case ORR:
-  //     opCode = 12;
-  //     break;
-  //   case MOV:
-  //     opCode = 13;
-  //     break;
-  //   case TST:
-  //     opCode = 8;
-  //     instruction = instruction | S_BIT;
-  //     break;
-  //   case TEQ:
-  //     opCode = 9;
-  //     instruction = instruction | S_BIT;
-  //     break;
-  //   case CMP:
-  //     opCode = 10;
-  //     instruction = instruction | S_BIT;
-  //     break;
-  //   default:
-  //     // Should return an error
-  //     opCode = -1;
-  //     break;
-  // }
+  uint32_t opCode;
+
+  // Set condition to always
+  uint32_t instruction = 0xd0000000;
+
+  switch(name) {
+    case AND:
+      opCode = 0;
+  //    setReg(COMP_RESULT, tokens, instruction);
+      break;
+    case EOR:
+      opCode = 1;
+//      setReg(COMP_RESULT, tokens, instruction);
+      break;
+    case SUB:
+      opCode = 2;
+//      setReg(COMP_RESULT, tokens, instruction);
+      break;
+    case RSB:
+      opCode = 3;
+//      setReg(COMP_RESULT, tokens, instruction);
+      break;
+    case ADD:
+      opCode = 4;
+//      setReg(COMP_RESULT, tokens, instruction);
+      break;
+    case ORR:
+      opCode = 12;
+//      setReg(COMP_RESULT, tokens, instruction);
+      break;
+    case MOV:
+      opCode = 13;
+//      setReg(SINGLE_OP_ASS, tokens, instruction);
+      break;
+    case TST:
+      opCode = 8;
+//      setReg(SET_CPSR, tokens, instruction);
+      instruction = instruction | S_BIT;
+      break;
+    case TEQ:
+      opCode = 9;
+//      setReg(SET_CPSR, tokens, instruction);
+      instruction = instruction | S_BIT;
+      break;
+    case CMP:
+      opCode = 10;
+ //     setReg(SET_CPSR, tokens, instruction);
+      instruction = instruction | S_BIT;
+      break;
+    default:
+      // Should return an error
+      opCode = -1;
+      break;
+  }
+  instruction = instruction | (opCode << 21) | I_BIT;
   return 0;
 }
 
+
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
-  return 0;
+
+	uint32_t binInstr = 0x04000000;
+	uint32_t cond;
+	char* rd = tokens[1];
+	uint32_t rdNum = atoi(&rd[1]) << 12;
+	uint32_t l;
+	uint32_t p;
+	uint32_t u;
+	uint32_t i;
+	uint32_t rn;
+	uint32_t offset;
+
+  if (tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']') {
+		//pre-indexing - p is set
+		p = 0x01000000;
+		if (tokens[2][3] == ']') {
+			tokens[2][3] = '\0';
+		}
+		rn = atoi(&tokens[2][2]) << 16;
+
+    if (tokens[3][strlen(tokens[3]) - 1] == ']') {
+			tokens[3][strlen(tokens[3]) - 1] = '\0';
+			offset = atoi(&tokens[3][2]);
+		} else {
+			offset = 0;
+		}
+
+	} else {
+		p = 0x00000000;
+	}
+
+	switch (name) {
+		case STR :
+			l = 0x00000000;
+		case LDR :
+		  l = 0x00100000; // check
+			if (tokens[2][0] == '=') {
+				if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
+					return parseDataProcessing(symbolTable, tokens, MOV);
+					i = 0x00000000;
+				} else {
+					i = 0x02000000;
+				}
+				//treat address as numerican constant
+
+			}
+
+	}
+
+	binInstr = binInstr | cond | rdNum | l | p | u | i | rn | offset;
+	return binInstr;
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
@@ -133,13 +244,13 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 		}
 		code += (num << 20);
 		//code = 0x9MNS2De0 or 0x9MNS0De0
-	}
+
 
 	return code;
 }
 
 uint32_t parseBranch(map_t *symbolTable, char **tokens, instrName_t name, int currAddress) {
-  int cond;
+  uint32_t cond;
     switch(name) {
       case BEQ:
         cond = 0;
@@ -208,97 +319,98 @@ int firstPass(char* fileName, map_t *symbolTable) {
 
   while(1) {
     char buffer[MAX_INSTR_LEN];
-    fgets(buffer, MAX_INSTR_LEN, fptr);
-    int strLength = strlen(buffer + 1); //for the \0 char
+    fscanf(fptr, " %[^\n]", buffer);
+    if (feof(fptr)) {
+      break;
+    }
+    int strLength = strlen(buffer) + 1; //for the \0 char
     if (buffer[strLength - 1] == ':') {
-			if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
-				printf("exceeded symbolTableSize");
-				return 0;
-			}
-			map_t map = newMap(buffer, memAddress); //buffer includes the ':'
-			symbolTable[tableSize] = map;
-			tableSize++;
-		} else {
-			numOfInstr++;
-		}
-		memAddress += ADDR_INC;
+      if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
+        printf("exceeded symbolTableSize");
+        return 0;
+      }
+      buffer = strtok(buffer, ": ");
+      map_t map = newMap(buffer, memAddress); //buffer includes the ':'
+      symbolTable[tableSize] = map;
+      tableSize++;
+    } else {
+      numOfInstr++;
+    }
+    memAddress += ADDR_INC;
 
-		if (feof(fptr)) {
-			break;
-		}
-	}
+  }
 
-	fclose(fptr);
+  fclose(fptr);
 
-	return numOfInstr;
-	//returns TOTAL no. of instructions excluding labels
+  return numOfInstr;
+  //returns TOTAL no. of instructions excluding labels
 }
 
 instrName_t toInstrName(char* instrString) {
-  if (strcmp(instrString, "add ") == 0) {
+  if (strcmp(instrString, "add") == 0) {
     return ADD;
   }
-  else if (strcmp(instrString, "sub ") == 0) {
+  else if (strcmp(instrString, "sub") == 0) {
     return SUB;
   }
-  else if (strcmp(instrString, "rsb ") == 0) {
+  else if (strcmp(instrString, "rsb") == 0) {
     return RSB;
   }
-  else if (strcmp(instrString, "and ") == 0) {
+  else if (strcmp(instrString, "and") == 0) {
     return AND;
   }
-  else if (strcmp(instrString, "eor ") == 0) {
+  else if (strcmp(instrString, "eor") == 0) {
     return EOR;
   }
-  else if (strcmp(instrString, "orr ") == 0) {
+  else if (strcmp(instrString, "orr") == 0) {
     return ORR;
   }
-  else if (strcmp(instrString, "mov ") == 0) {
+  else if (strcmp(instrString, "mov") == 0) {
     return MOV;
   }
-  else if (strcmp(instrString, "tst ") == 0) {
+  else if (strcmp(instrString, "tst") == 0) {
     return TST;
   }
-  else if (strcmp(instrString, "teq ") == 0) {
+  else if (strcmp(instrString, "teq") == 0) {
     return TEQ;
   }
-  else if (strcmp(instrString, "cmp ") == 0) {
+  else if (strcmp(instrString, "cmp") == 0) {
     return CMP;
   }
-  else if (strcmp(instrString, "mul ") == 0) {
+  else if (strcmp(instrString, "mul") == 0) {
     return MUL;
   }
-  else if (strcmp(instrString, "mla ") == 0) {
+  else if (strcmp(instrString, "mla") == 0) {
     return MLA;
   }
-  else if (strcmp(instrString, "ldr ") == 0) {
+  else if (strcmp(instrString, "ldr") == 0) {
     return LDR;
   }
-  else if (strcmp(instrString, "str ") == 0) {
+  else if (strcmp(instrString, "str") == 0) {
     return STR;
   }
-  else if (strcmp(instrString, "beq ") == 0) {
+  else if (strcmp(instrString, "beq") == 0) {
     return BEQ;
   }
-  else if (strcmp(instrString, "bne ") == 0) {
+  else if (strcmp(instrString, "bne") == 0) {
     return BNE;
   }
-  else if (strcmp(instrString, "bge ") == 0) {
+  else if (strcmp(instrString, "bge") == 0) {
     return BGE;
   }
-  else if (strcmp(instrString, "blt ") == 0) {
+  else if (strcmp(instrString, "blt") == 0) {
     return BLT;
   }
-  else if (strcmp(instrString, "bgt ") == 0) {
+  else if (strcmp(instrString, "bgt") == 0) {
     return BGT;
   }
-  else if (strcmp(instrString, "ble ") == 0) {
+  else if (strcmp(instrString, "ble") == 0) {
     return BLE;
   }
-  else if (strcmp(instrString, "b ") == 0) {
+  else if (strcmp(instrString, "b") == 0) {
     return B;
   }
-  else if (strcmp(instrString, "lsl ") == 0) {
+  else if (strcmp(instrString, "lsl") == 0) {
     return LSL;
   }
   else {
@@ -315,155 +427,121 @@ instrName_t toInstrName(char* instrString) {
 void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions) {
  //keep track of order of the instructions, pass instruNumber into
  //parse so that it knows which index you write to in the binaryInstructions
- FILE *fptr = fopen(fileName, "r");
- int instrNum = 0;
 
- while(1) {
-	 char buffer[MAX_INSTR_LEN];
-	 fgets(buffer, MAX_INSTR_LEN, fptr);
-	 int strLength = strlen(buffer);
-	 if (buffer[strLength - 1] != ':') {
-		 char *tokens[5];
+  FILE *fptr = fopen(fileName, "r");
+  int instrNum = 0;
+  while(1) {
+    char buffer[MAX_INSTR_LEN];
+    fscanf(fptr, " %[^\n]s", buffer);
+    if (feof(fptr)) {
+      fclose(fptr);
+      break;
+    }
+    int strLength = strlen(buffer);
+    if (buffer[strLength - 1] != ':') {
+      char *tokens[6];
 
-		 /* TOKENIZE */
-		 const char delimiter[2] = ", ";
-		 tokens[0] = strtok(buffer, delimiter);
-	   int i = 0;
+      /* TOKENIZE */
+      const char delimiter[2] = ", ";
+      tokens[0] = strtok(buffer, delimiter);
 
-	   while(1) {
-	     printf("%s\n", tokens[i]);
-	     i++;
-	     tokens[i] = strtok(NULL, delimiter);
-	     if (tokens[i] == NULL) {
-	       break;
-	     }
-	   }
+      int i = 0;
+      while(tokens[i] != NULL) {
+	       i++;
+	       tokens[i] = strtok(NULL, delimiter);
+      }
 
-		 // char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
-     // char *instrString;
-		 //
-		 // if (strlen(instrStringBuffer) == 2) {
-			//  instrString = malloc(1 + 1);
-		 // } else {
-			//  instrString = malloc(3 + 1);
-		 // }
-		 //
-		 // strcpy(instrString, instrStringBuffer);
-		 //
-		 // char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
-		 // char *remainingString = malloc((sizeof(char) * 4) + 1);
-		 // strcpy(remainingString, passedString);
-
-     instrName_t instrName = toInstrName(tokens[0]);
-
-		 switch (instrName) {
-	   	 case ADD :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ADD);
-			   break;
-	 		 case SUB :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, SUB);
-			   break;
-	 		 case RSB :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, RSB);
-			   break;
-	 		 case AND :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, AND);
-			   break;
-	 		 case EOR :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, EOR);
-			   break;
-	 		 case ORR :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ORR);
-			   break;
-	 		 case MOV :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, MOV);
-			   break;
-	 		 case TST :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TST);
-			   break;
-	 		 case TEQ :
-			   binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TEQ);
-		     break;
-	 		 case CMP :
-			 	binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, CMP);
-			  break;
-			 case MUL :
-			   binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MUL);
-			   break;
-			 case MLA :
-			  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MLA);
-				break;
-			 case LDR :
-			  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, LDR);
-			  break;
-			 case STR :
-			  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, STR);
-				break;
-			 case LSL :
-			   binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, LSL);
-			   break;
-			 case ANDEQ :
-			   binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, ANDEQ);
-			   break;
-       case BEQ :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BEQ, instrNum * 4);
-			   break;
-			 case BNE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BNE, instrNum * 4);
-			   break;
-			 case BGE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGE, instrNum * 4);
-			   break;
-			 case BLT :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLT, instrNum * 4);
-			   break;
-			 case BGT :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGT, instrNum * 4);
-			   break;
-			 case BLE :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLE, instrNum * 4);
-			   break;
-			 case B :
-			   binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, B, instrNum * 4);
-				 break;
-	 	}
-	 }
-	 instrNum++;
-	 if (feof(fptr)) {
-		 break;
-	 }
-	 fclose(fptr);
- }
+      instrName_t instrName = toInstrName(tokens[0]);
+      switch (instrName) {
+        case ADD :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ADD);
+      	  break;
+      	case SUB :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, SUB);
+      	  break;
+      	case RSB :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, RSB);
+      	  break;
+      	case AND :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, AND);
+      	  break;
+      	case EOR :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, EOR);
+      	  break;
+      	case ORR :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ORR);
+      	  break;
+      	case MOV :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, MOV);
+      	  break;
+      	case TST :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TST);
+      	  break;
+      	case TEQ :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TEQ);
+      	  break;
+      	case CMP :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, CMP);
+      	  break;
+      	case MUL :
+      	  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MUL);
+      	  break;
+      	case MLA :
+      	  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MLA);
+      	  break;
+      	case LDR :
+      	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, LDR);
+      	  break;
+      	case STR :
+      	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, STR);
+      	  break;
+      	case LSL :
+      	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, LSL);
+      	  break;
+      	case ANDEQ :
+      	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, ANDEQ);
+      	  break;
+      	case BEQ :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BEQ, instrNum * 4);
+      	  break;
+      	case BNE :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BNE, instrNum * 4);
+      	  break;
+      	case BGE :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGE, instrNum * 4);
+      	  break;
+      	case BLT :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLT, instrNum * 4);
+      	  break;
+      	case BGT :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGT, instrNum * 4);
+      	  break;
+      	case BLE :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLE, instrNum * 4);
+      	  break;
+      	case B :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, B, instrNum * 4);
+      	  break;
+      }
+      instrNum++;
+    }
+  }
 }
 
 
 void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstructions) {
-	FILE *fptr = fopen(fileName, "w");
-	assert(fptr != NULL);
+  FILE *fptr = fopen(fileName, "w");
+  assert(fptr != NULL);
 
-	for (int i = 0; i < numOfInstructions; i++) {
+  for (int i = 0; i < numOfInstructions; i++) {
 
-		uint32_t mask = 1 << 31;
-		uint32_t bin = binaryInstructions[i];
-
-		fprintf(fptr, "Address : %08x    Binary instruction : ", (i * 0x4));
-
-		for (int i = 0; i < 32; i++) {
-			if ((bin & mask) == 0) {
-				fputs("0", fptr);
-			} else {
-				fputs("1", fptr);
-			}
-			mask = mask >> 1;
-		}
-		fputs("\n", fptr);
-	}
-	fclose(fptr);
+    fwrite(&binaryInstructions[i], 4, 1, fptr);
+  }
+  fclose(fptr);
 }
 
 
 int main(int argc, char *argv[]) {
-
   map_t *symbolTable = malloc(sizeof(map_t) * MAX_MAPS);
   int numOfInstructions = firstPass(argv[1], symbolTable);
   if (numOfInstructions == 0) {
@@ -473,6 +551,6 @@ int main(int argc, char *argv[]) {
   uint32_t *binaryInstructions = malloc(sizeof(uint32_t) * numOfInstructions);
   secondPass(argv[1], symbolTable, binaryInstructions);
   writeBinary(argv[2], binaryInstructions, numOfInstructions);
-
+  free(symbolTable);
   return EXIT_SUCCESS;
 }
