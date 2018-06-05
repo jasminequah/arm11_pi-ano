@@ -465,13 +465,13 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 
 
 void writeBinary(char* fileName, uint32_t *binaryInstructions, int numOfInstructions) {
-  FILE *fptr = fopen(fileName, "w+");
+  FILE *fptr = fopen(fileName, "w");
   assert(fptr != NULL);
 
   for (int i = 0; i < numOfInstructions; i++) {
-
-    // uint32_t mask = 1 << 31;
-    fprintf(fptr, "%x\n", binaryInstructions[i]); //check endian form
+    // printf("%x\n", binaryInstructions[i]);
+    // fprintf(fptr, "%08x\n", binaryInstructions[i]); //check endian form
+    fwrite(&binaryInstructions[i], 4, 1, fptr);
   }
   fclose(fptr);
 }
