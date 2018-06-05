@@ -37,35 +37,35 @@ uint32_t getOperand(char *expression) {
   }
 }
 
-void setReg(dataProcType_t instrType, char **tokens, uint32_t instruction) {
-  uint32_t rd;
-  uint32_t rn;
-  uint32_t operand2;
-
-  switch(instrType) {
-    case COMP_RESULT:
-      if (&tokens[1][1] != NULL && &tokens[2][1] != NULL) {
-        rd          = atoi(&tokens[1][1]);
-        rn          = atoi(&tokens[2][1]);
-      }
-      operand2    = getOperand(tokens[3] + sizeof(char));
-      instruction = instruction | (rn << 16) | (rd << 12) | operand2;
-      break;
-    case SINGLE_OP_ASS:
-      if (&tokens[1][1] != NULL) {
-        rd          = atoi(&tokens[1][1]);
-      }
-      operand2    = getOperand(tokens[2] + sizeof(char));
-      instruction = instruction | (rd << 12) | operand2;
-      break;
-    case SET_CPSR:
-      if (&tokens[1][1] != NULL) {
-        rn          = atoi(&tokens[1][1]);
-      }
-      operand2    = getOperand(tokens[2] + sizeof(char));
-      instruction = instruction | (rn << 16) | operand2;
-  }
-}
+// void setReg(dataProcType_t instrType, char **tokens, uint32_t instruction) {
+//   uint32_t rd;
+//   uint32_t rn;
+//   uint32_t operand2;
+//
+//   switch(instrType) {
+//     case COMP_RESULT:
+//       if (&tokens[1][1] != NULL && &tokens[2][1] != NULL) {
+//         rd          = atoi(&tokens[1][1]);
+//         rn          = atoi(&tokens[2][1]);
+//       }
+//       operand2    = getOperand(tokens[3] + sizeof(char));
+//       instruction = instruction | (rn << 16) | (rd << 12) | operand2;
+//       break;
+//     case SINGLE_OP_ASS:
+//       if (&tokens[1][1] != NULL) {
+//         rd          = atoi(&tokens[1][1]);
+//       }
+//       operand2    = getOperand(tokens[2] + sizeof(char));
+//       instruction = instruction | (rd << 12) | operand2;
+//       break;
+//     case SET_CPSR:
+//       if (&tokens[1][1] != NULL) {
+//         rn          = atoi(&tokens[1][1]);
+//       }
+//       operand2    = getOperand(tokens[2] + sizeof(char));
+//       instruction = instruction | (rn << 16) | operand2;
+//   }
+// }
 
 uint32_t getMemAddress(map_t *symbolTable, char *label) {
   int currMap = 0;
@@ -88,7 +88,7 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
   switch(name) {
     case AND:
       opCode = 0;
-      setReg(COMP_RESULT, tokens, instruction);
+  //    setReg(COMP_RESULT, tokens, instruction);
       break;
     case EOR:
       opCode = 1;
@@ -362,120 +362,103 @@ instrName_t toInstrName(char* instrString) {
 void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions) {
  //keep track of order of the instructions, pass instruNumber into
  //parse so that it knows which index you write to in the binaryInstructions
+
   FILE *fptr = fopen(fileName, "r");
   int instrNum = 0;
   while(1) {
     char buffer[MAX_INSTR_LEN];
     fscanf(fptr, " %[^\n]s", buffer);
+    if (feof(fptr)) {
+      fclose(fptr);
+      break;
+    }
     int strLength = strlen(buffer);
-    if (buffer[strLength - 2] != ':') {
-      char **tokens = malloc(sizeof(char *) * 10);
+    if (buffer[strLength - 1] != ':') {
+      char *tokens[6];
 
       /* TOKENIZE */
       const char delimiter[2] = ", ";
       tokens[0] = strtok(buffer, delimiter);
-      int i = 0;
 
-      while(1) {
-	i++;
-        if (tokens[i] == NULL) {
-          break;
-        }
-	tokens[i] = strtok(NULL, delimiter);
+      int i = 0;
+      while(tokens[i] != NULL) {
+	       i++;
+	       tokens[i] = strtok(NULL, delimiter);
       }
-      // char *instrStringBuffer = strtok(buffer, ' '); //check this, maybe use strtol
-      // char *instrString;
-      //
-      // if (strlen(instrStringBuffer) == 2) {
-      //  instrString = malloc(1 + 1);
-      // } else {
-      //  instrString = malloc(3 + 1);
-      // }
-      //
-      // strcpy(instrString, instrStringBuffer);
-      //
-      // char *passedString = buffer[4]; //bc each instruName is 3 chars + 1 space, not sure about the /0 char
-      // char *remainingString = malloc((sizeof(char) * 4) + 1);
-      // strcpy(remainingString, passedString);
 
       instrName_t instrName = toInstrName(tokens[0]);
       switch (instrName) {
         case ADD :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ADD);
-	  break;
-	case SUB :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, SUB);
-	  break;
-	case RSB :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, RSB);
-	  break;
-	case AND :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, AND);
-	  break;
-	case EOR :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, EOR);
-	  break;
-	case ORR :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ORR);
-	  break;
-	case MOV :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, MOV);
-	  break;
-	case TST :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TST);
-	  break;
-	case TEQ :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TEQ);
-	  break;
-	case CMP :
-	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, CMP);
-	  break;
-	case MUL :
-	  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MUL);
-	  break;
-	case MLA :
-	  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MLA);
-	  break;
-	case LDR :
-	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, LDR);
-	  break;
-	case STR :
-	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, STR);
-	  break;
-	case LSL :
-	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, LSL);
-	  break;
-	case ANDEQ :
-	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, ANDEQ);
-	  break;
-	case BEQ :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BEQ, instrNum * 4);
-	  break;
-	case BNE :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BNE, instrNum * 4);
-	  break;
-	case BGE :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGE, instrNum * 4);
-	  break;
-	case BLT :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLT, instrNum * 4);
-	  break;
-	case BGT :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGT, instrNum * 4);
-	  break;
-	case BLE :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLE, instrNum * 4);
-	  break;
-	case B :
-	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, B, instrNum * 4);
-	  break;
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ADD);
+      	  break;
+      	case SUB :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, SUB);
+      	  break;
+      	case RSB :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, RSB);
+      	  break;
+      	case AND :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, AND);
+      	  break;
+      	case EOR :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, EOR);
+      	  break;
+      	case ORR :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ORR);
+      	  break;
+      	case MOV :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, MOV);
+      	  break;
+      	case TST :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TST);
+      	  break;
+      	case TEQ :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, TEQ);
+      	  break;
+      	case CMP :
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, CMP);
+      	  break;
+      	case MUL :
+      	  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MUL);
+      	  break;
+      	case MLA :
+      	  binaryInstructions[instrNum] = parseMultiply(symbolTable, tokens, MLA);
+      	  break;
+      	case LDR :
+      	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, LDR);
+      	  break;
+      	case STR :
+      	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, STR);
+      	  break;
+      	case LSL :
+      	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, LSL);
+      	  break;
+      	case ANDEQ :
+      	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, ANDEQ);
+      	  break;
+      	case BEQ :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BEQ, instrNum * 4);
+      	  break;
+      	case BNE :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BNE, instrNum * 4);
+      	  break;
+      	case BGE :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGE, instrNum * 4);
+      	  break;
+      	case BLT :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLT, instrNum * 4);
+      	  break;
+      	case BGT :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BGT, instrNum * 4);
+      	  break;
+      	case BLE :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BLE, instrNum * 4);
+      	  break;
+      	case B :
+      	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, B, instrNum * 4);
+      	  break;
       }
       instrNum++;
-      free(tokens);
-    }
-    if (feof(fptr)) {
-      fclose(fptr);
-      break;
     }
   }
 }
