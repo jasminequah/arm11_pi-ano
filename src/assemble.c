@@ -126,7 +126,7 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 
 	if (name == MLA) {
 		//Rn
-		registers = strtok(NULL, " ");
+		registers = tokens[4];
 		num = registers[1] - '0';
 		if (registers[2] != '\0') {
 			num = (num * 10) + (registers[2] - '0');
