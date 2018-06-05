@@ -100,24 +100,27 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 	//Rd
 	registers = token[1];
 	num = registers[1] - '0';
+	if (registers[2] != '\0') {
+		num = (num * 10) + (registers[2] - '0');
+	}
 	code += (num << 8);
 	//code = 0x2De0 or 0x0De0
 
 	//Rm
 	registers = token[2];
 	num = registers[1] - '0';
-  if(sizeof(registers) == 3){
-    num += ((registers[2] - '0') * 10);
-  }
+	if (registers[2] != '\0') {
+		num = (num * 10) + (registers[2] - '0');
+	}
 	code += (((0x9 << 4) + num) << 24);
 	//code = 0x9M002De0 or 0x9M000De0
 
 	//Rs
-	registers = strtok(NULL, " ");
+	registers = tokens[3];
 	num = registers[1] - '0';
-  if(sizeof(registers) == 3){
-    num += ((registers[2] - '0') * 10);
-  }
+	if (registers[2] != '\0') {
+		num = (num * 10) + (registers[2] - '0');
+	}
 	code += (num << 16);
 	//code = 0x9M0S2De0 or 0x9M0S0De0
 
@@ -125,9 +128,9 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 		//Rn
 		registers = strtok(NULL, " ");
 		num = registers[1] - '0';
-    if(sizeof(registers) == 3){
-      num += ((registers[2] - '0') * 10);
-    }
+		if (registers[2] != '\0') {
+			num = (num * 10) + (registers[2] - '0');
+		}
 		code += (num << 20);
 		//code = 0x9MNS2De0 or 0x9MNS0De0
 	}
