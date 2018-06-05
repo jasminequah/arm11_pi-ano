@@ -81,8 +81,6 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
 
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
 
-  int numOfTokens = sizeof(tokens) /
-
 	uint32_t binInstr = 0x04000000;
 	uint32_t cond;
 	char* rd = tokens[1];
