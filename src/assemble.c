@@ -4,13 +4,17 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define MAX_MAPS 10
-#define MAX_INSTR_LEN 511
-#define ADDR_INC 0x4
+#define MAX_MAPS              10
+#define MAX_INSTR_LEN         511
+#define ADDR_INC              0x4
 #define MAX_SYMBOL_TABLE_SIZE 50
+#define BITS_IN_WORD          32
 
-#define S_BIT 0x00080000;
-#define I_BIT 0x02000000;
+#define S_BIT             0x00080000
+#define I_BIT             0x02000000
+#define ALWAYS_COND_CODE  0xe0000000
+#define MAX_NO_ROTATE_IMM 0xff
+#define MAX_ROTATE        0xf
 
 typedef struct map {
   char *label;
@@ -37,45 +41,80 @@ uint32_t getOperand(char *expression) {
   }
 }
 
-// void setReg(dataProcType_t instrType, char **tokens, uint32_t instruction) {
-//   uint32_t rd;
-//   uint32_t rn;
-//   uint32_t operand2;
-//
-//   switch(instrType) {
-//     case COMP_RESULT:
-//       if (&tokens[1][1] != NULL && &tokens[2][1] != NULL) {
-//         rd          = atoi(&tokens[1][1]);
-//         rn          = atoi(&tokens[2][1]);
-//       }
-//       operand2    = getOperand(tokens[3] + sizeof(char));
-//       instruction = instruction | (rn << 16) | (rd << 12) | operand2;
-//       break;
-//     case SINGLE_OP_ASS:
-//       if (&tokens[1][1] != NULL) {
-//         rd          = atoi(&tokens[1][1]);
-//       }
-//       operand2    = getOperand(tokens[2] + sizeof(char));
-//       instruction = instruction | (rd << 12) | operand2;
-//       break;
-//     case SET_CPSR:
-//       if (&tokens[1][1] != NULL) {
-//         rn          = atoi(&tokens[1][1]);
-//       }
-//       operand2    = getOperand(tokens[2] + sizeof(char));
-//       instruction = instruction | (rn << 16) | operand2;
-//   }
-// }
+uint32_t rotateLeftByTwo(uint32_t n) {
+  return (n << 2) | (n >> ((BITS_IN_WORD)- 2));
+}
+
+void getImmediate(uint32_t *instrPtr, uint32_t operand2) {
+  uint32_t rotateAmount = 0;
+
+  while (operand2 > MAX_NO_ROTATE_IMM) {
+    if (rotateAmount > MAX_ROTATE) {
+      printf("Error: Immediate value exceeds maximum representable value");
+      break;
+    }
+    rotateAmount++;
+    operand2 = rotateLeftByTwo(operand2);
+  }
+  
+  *instrPtr = *instrPtr | (rotateAmount << 8) | operand2;
+}
+
+void setReg(dataProcType_t instrType, char **tokens, uint32_t *instrPtr) {
+  uint32_t rd;
+  uint32_t rn;
+  uint32_t operand2;
+
+  switch(instrType) {
+    case COMP_RESULT:
+      rd          = atoi(&tokens[1][1]);
+      rn          = atoi(&tokens[2][1]);
+
+      if (tokens[3][0] == '#') {
+        *instrPtr = *instrPtr | I_BIT;
+      }
+
+      operand2    = getOperand(tokens[3] + sizeof(char));
+      getImmediate(instrPtr, operand2);
+
+      *instrPtr   = *instrPtr | (rn << 16) | (rd << 12);
+      break;
+    case SINGLE_OP_ASS:
+      rd          = atoi(&tokens[1][1]);
+
+      if (tokens[2][0] == '#') {
+        *instrPtr = *instrPtr | I_BIT;
+      }
+
+      operand2    = getOperand(tokens[2] + sizeof(char));
+      getImmediate(instrPtr, operand2);
+
+      *instrPtr   = *instrPtr | (rd << 12);
+      break;
+    case SET_CPSR:
+      rn          = atoi(&tokens[1][1]);
+
+      if (tokens[2][0] == '#') {
+        *instrPtr = *instrPtr | I_BIT;
+      }
+
+      operand2     = getOperand(tokens[2] + sizeof(char));
+      getImmediate(instrPtr, operand2);       
+
+      *instrPtr    = *instrPtr | (rn << 16);
+  }
+}
 
 uint32_t getMemAddress(map_t *symbolTable, char *label) {
-  int currMap = 0;
+  map_t *currMap = symbolTable;
   while (1) {
-    map_t map = *(symbolTable + currMap);
-    if (map.label == label) {
-      return map.memAddress;
+    if (strcmp(currMap->label, label) == 0) {
+      break;
     }
-    currMap += sizeof(map_t);
+    currMap++;
   }
+  printf("========= exits getMemAddress while =========\n");
+  return currMap->memAddress;
 }
 
 /* Does not support case when operand2 is a shift so sets I bit */
@@ -83,50 +122,50 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
   uint32_t opCode;
 
   // Set condition to always
-  uint32_t instruction = 0xd0000000;
+  uint32_t instruction = ALWAYS_COND_CODE;
 
   switch(name) {
     case AND:
       opCode = 0;
-  //    setReg(COMP_RESULT, tokens, instruction);
+      setReg(COMP_RESULT, tokens, &instruction);
       break;
     case EOR:
       opCode = 1;
-//      setReg(COMP_RESULT, tokens, instruction);
+      setReg(COMP_RESULT, tokens, &instruction);
       break;
     case SUB:
       opCode = 2;
-//      setReg(COMP_RESULT, tokens, instruction);
+      setReg(COMP_RESULT, tokens, &instruction);
       break;
     case RSB:
       opCode = 3;
-//      setReg(COMP_RESULT, tokens, instruction);
+      setReg(COMP_RESULT, tokens, &instruction);
       break;
     case ADD:
       opCode = 4;
-//      setReg(COMP_RESULT, tokens, instruction);
+      setReg(COMP_RESULT, tokens, &instruction);
       break;
     case ORR:
       opCode = 12;
-//      setReg(COMP_RESULT, tokens, instruction);
+      setReg(COMP_RESULT, tokens, &instruction);
       break;
     case MOV:
       opCode = 13;
-//      setReg(SINGLE_OP_ASS, tokens, instruction);
+      setReg(SINGLE_OP_ASS, tokens, &instruction);
       break;
     case TST:
       opCode = 8;
-//      setReg(SET_CPSR, tokens, instruction);
+      setReg(SET_CPSR, tokens, &instruction);
       instruction = instruction | S_BIT;
       break;
     case TEQ:
       opCode = 9;
-//      setReg(SET_CPSR, tokens, instruction);
+      setReg(SET_CPSR, tokens, &instruction);
       instruction = instruction | S_BIT;
       break;
     case CMP:
       opCode = 10;
- //     setReg(SET_CPSR, tokens, instruction);
+      setReg(SET_CPSR, tokens, &instruction);
       instruction = instruction | S_BIT;
       break;
     default:
@@ -134,96 +173,97 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
       opCode = -1;
       break;
   }
-  instruction = instruction | (opCode << 21) | I_BIT;
-  return 0;
+  instruction = instruction | (opCode << 21);
+  return instruction;
 }
 
 
 uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
-
-	uint32_t binInstr = 0x04000000;
-	uint32_t cond;
-	char* rd = tokens[1];
-	uint32_t rdNum = atoi(&rd[1]) << 12;
-	uint32_t l;
-	uint32_t p;
-	uint32_t u;
-	uint32_t i;
-	uint32_t rn;
-	uint32_t offset;
-
-  if (tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']') {
-		//pre-indexing - p is set
-		p = 0x01000000;
-		if (tokens[2][3] == ']') {
-			tokens[2][3] = '\0';
-		}
-		rn = atoi(&tokens[2][2]) << 16;
-
-    if (tokens[3][strlen(tokens[3]) - 1] == ']') {
-			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = atoi(&tokens[3][2]);
-		} else {
-			offset = 0;
-		}
-
-	} else {
-		p = 0x00000000;
-	}
-
-	switch (name) {
-		case STR :
-			l = 0x00000000;
-		case LDR :
-		  l = 0x00100000; // check
-			if (tokens[2][0] == '=') {
-				if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
-					return parseDataProcessing(symbolTable, tokens, MOV);
-					i = 0x00000000;
-				} else {
-					i = 0x02000000;
-				}
-				//treat address as numerican constant
-
-			}
-
-	}
-
-	binInstr = binInstr | cond | rdNum | l | p | u | i | rn | offset;
-	return binInstr;
+  //
+	// uint32_t binInstr = 0x04000000;
+	// uint32_t cond;
+	// char* rd = tokens[1];
+	// uint32_t rdNum = atoi(&rd[1]) << 12;
+	// uint32_t l;
+	// uint32_t p;
+	// uint32_t u;
+	// uint32_t i;
+	// uint32_t rn;
+	// uint32_t offset;
+  //
+  // if (tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']') {
+	// 	//pre-indexing - p is set
+	// 	p = 0x01000000;
+	// 	if (tokens[2][3] == ']') {
+	// 		tokens[2][3] = '\0';
+	// 	}
+	// 	rn = atoi(&tokens[2][2]) << 16;
+  //
+  //   if (tokens[3][strlen(tokens[3]) - 1] == ']') {
+	// 		tokens[3][strlen(tokens[3]) - 1] = '\0';
+	// 		offset = atoi(&tokens[3][2]);
+	// 	} else {
+	// 		offset = 0;
+	// 	}
+  //
+	// } else {
+	// 	p = 0x00000000;
+	// }
+  //
+	// switch (name) {
+	// 	case STR :
+	// 		l = 0x00000000;
+	// 	case LDR :
+	// 	  l = 0x00100000; // check
+	// 		if (tokens[2][0] == '=') {
+	// 			if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
+	// 				return parseDataProcessing(symbolTable, tokens, MOV);
+	// 				i = 0x00000000;
+	// 			} else {
+	// 				i = 0x02000000;
+	// 			}
+	// 			//treat address as numerican constant
+  //
+	// 		}
+  //
+	// }
+  //
+	// binInstr = binInstr | cond | rdNum | l | p | u | i | rn | offset;
+	// return binInstr;
+  return 0;
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 	// mul r2, r1, r0 = 0x910002e0
-	uint32_t code = 0xe0;
+	uint32_t code = 0xe0 << 24;
 
 	char* registers;
 	int num;
 	if (name == MUL) {
-		code += (0x0 << 12);
+		code += (0x0 << 20);
 	}
 	else {
-		code += (0x2 << 12);
+		code += (0x2 << 20);
 	}
 
 	// code = 0x20e0 or 0x00e0
 
 	//Rd
-	registers = token[1];
+	registers = tokens[1];
 	num = registers[1] - '0';
 	if (registers[2] != '\0') {
 		num = (num * 10) + (registers[2] - '0');
 	}
-	code += (num << 8);
+	code += (num << 16);
 	//code = 0x2De0 or 0x0De0
 
 	//Rm
-	registers = token[2];
+	registers = tokens[2];
 	num = registers[1] - '0';
 	if (registers[2] != '\0') {
 		num = (num * 10) + (registers[2] - '0');
 	}
-	code += (((0x9 << 4) + num) << 24);
+	code += ((0x9 << 4) + num);
 	//code = 0x9M002De0 or 0x9M000De0
 
 	//Rs
@@ -232,7 +272,7 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 	if (registers[2] != '\0') {
 		num = (num * 10) + (registers[2] - '0');
 	}
-	code += (num << 16);
+	code += (num << 8);
 	//code = 0x9M0S2De0 or 0x9M0S0De0
 
 	if (name == MLA) {
@@ -242,9 +282,9 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 		if (registers[2] != '\0') {
 			num = (num * 10) + (registers[2] - '0');
 		}
-		code += (num << 20);
+		code += (num << 12);
 		//code = 0x9MNS2De0 or 0x9MNS0De0
-
+        }
 
 	return code;
 }
@@ -329,8 +369,8 @@ int firstPass(char* fileName, map_t *symbolTable) {
         printf("exceeded symbolTableSize");
         return 0;
       }
-      buffer = strtok(buffer, ": ");
-      map_t map = newMap(buffer, memAddress); //buffer includes the ':'
+      char *label = strtok(buffer, ": ");
+      map_t map = newMap(label, memAddress); //buffer includes the ':'
       symbolTable[tableSize] = map;
       tableSize++;
     } else {
@@ -552,5 +592,6 @@ int main(int argc, char *argv[]) {
   secondPass(argv[1], symbolTable, binaryInstructions);
   writeBinary(argv[2], binaryInstructions, numOfInstructions);
   free(symbolTable);
+  free(binaryInstructions);
   return EXIT_SUCCESS;
 }
