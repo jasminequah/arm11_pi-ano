@@ -375,11 +375,6 @@ uint32_t parseBranch(map_t *symbolTable, char **tokens, instrName_t name, int cu
   return (cond << 28) | (10 << 24) | offset;
 }
 
-uint32_t parseSpecial(map_t *symbolTable, char **tokens, instrName_t name) {
-	return 0;
-}
-
-
 /* First Pass: Makes symbol table-
         1)Associate each label(string) with a memory address(integer)
 	 Second Pass:
