@@ -15,6 +15,7 @@
 #define S_BIT             0x00080000
 #define I_BIT             0x02000000
 #define ALWAYS_COND_CODE  0xe0000000
+#define EQ_COND_CODE      0x00000000
 #define MAX_NO_ROTATE_IMM 0xff
 #define MAX_ROTATE        0xf
 
@@ -24,7 +25,7 @@
 #define RN_SHIFT             16
 #define RD_SHIFT             12
 #define RS_SHIFT             8
-#define SHIFT_CONSTANT_SHIFT 8
+#define SHIFT_CONSTANT_SHIFT 7
 #define SHIFT_TYPE_SHIFT     5
 
 typedef struct map {
@@ -81,7 +82,6 @@ void getExprBits(uint32_t *instrPtr, char *expression) {
 }
 
 void getShiftBits(uint32_t *instrPtr, char **remainingTokens) {
-
   uint32_t rm = atoi(&remainingTokens[0][1]);
   uint32_t shiftType;
   
@@ -158,6 +158,8 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
   uint32_t instruction = ALWAYS_COND_CODE;
 
   switch(name) {
+    case ANDEQ:
+      instruction = EQ_COND_CODE;
     case AND:
       opCode = 0;
       setReg(COMP_RESULT, tokens, &instruction, numTokens);
@@ -201,8 +203,11 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
       setReg(SET_CPSR, tokens, &instruction, numTokens);
       instruction = instruction | S_BIT;
       break;
+    case LSL: ;
+      char *newTokens[6] = {"mov", tokens[1], tokens[1], "lsl", tokens[2]};
+      return parseDataProcessing(symbolTable, newTokens, MOV, numTokens + 2);
     default:
-      // Should return an error
+      printf("Error: invalid instruction");
       opCode = -1;
       break;
   }
@@ -583,10 +588,10 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
       	  binaryInstructions[instrNum] = parseSDT(symbolTable, tokens, STR);
       	  break;
       	case LSL :
-      	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, LSL);
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, LSL, i);
       	  break;
       	case ANDEQ :
-      	  binaryInstructions[instrNum] = parseSpecial(symbolTable, tokens, ANDEQ);
+      	  binaryInstructions[instrNum] = parseDataProcessing(symbolTable, tokens, ANDEQ, i);
       	  break;
       	case BEQ :
       	  binaryInstructions[instrNum] = parseBranch(symbolTable, tokens, BEQ, instrNum * 4);
