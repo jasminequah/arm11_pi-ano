@@ -79,59 +79,69 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
 }
 
 
-uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name) {
+uint32_t parseSDT(map_t *symbolTable, char **tokens, instrName_t name,
+	int numOfInstructions, uint32_t* binaryInstructions) {
 
 	uint32_t binInstr = 0x04000000;
-	uint32_t cond;
-	char* rd = tokens[1];
-	uint32_t rdNum = atoi(&rd[1]) << 12;
+	uint32_t cond = 0; //not used
+	uint32_t rdNum = atoi(&tokens[1][1]) << 12;
 	uint32_t l;
 	uint32_t p;
-	uint32_t u;
-	uint32_t i;
+	uint32_t u = 0; //not used
+	uint32_t i = 0; //not used
 	uint32_t rn;
 	uint32_t offset;
 
-  if (tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']') {
-		//pre-indexing - p is set
-		p = 0x01000000;
-		if (tokens[2][3] == ']') {
-			tokens[2][3] = '\0';
-		}
-		rn = atoi(&tokens[2][2]) << 16;
 
-    if (tokens[3][strlen(tokens[3]) - 1] == ']') {
+	if (tokens[2][0] == '=') {
+		if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
+			tokens[2][0] = '#'; //changing to mov format so func call will work
+			return parseDataProcessing(symbolTable, tokens, MOV);
+		} else {
+			//treat address as numerican constant
+			uint32_t constant = atoi[&tokens[2]];
+			binaryInstructions[numOfInstructions] = constant;
+			//need a way of telling that numOfInstructions has increased by one :(
+			offset = newLocation - currentLocation;
+			rn = 15 << 16; //value of PC reg
+			p = 0x01000000;
+			l = 0x00100000;
+			return binaryInstructions | l | p | rn | rd | offset;
+			}
+		}
+  }
+
+
+
+	if (tokens[2][3] == ']') {
+		tokens[2][3] = '\0';
+	}
+	rn = atoi(&tokens[2][2]) << 16;
+
+	int isPreindexed = tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']';
+  if (isPreindexed) {
+		p = 0x01000000;
+    if (tokens[3] != NULL) {
 			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = atoi(&tokens[3][2]);
+			offset = atoi(&tokens[3][3]);
 		} else {
 			offset = 0;
 		}
-
 	} else {
-		p = 0x00000000;
+		p = 0;
+		offset = atoi(&tokens[3][3]); //expression in post-index without the '0x' of hex
 	}
 
-	switch (name) {
-		case STR :
-			l = 0x00000000;
-		case LDR :
-		  l = 0x00100000; // check
-			if (tokens[2][0] == '=') {
-				if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as move
-					return parseDataProcessing(symbolTable, tokens, MOV);
-					i = 0x00000000;
-				} else {
-					i = 0x02000000;
-				}
-				//treat address as numerican constant
-
-			}
-
+	if (name == LDR) {
+		l = 0x00100000; //check
+	} else {
+		l = 0;
 	}
 
 	binInstr = binInstr | cond | rdNum | l | p | u | i | rn | offset;
 	return binInstr;
 }
+
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 	// mul r2, r1, r0 = 0x910002e0
@@ -355,6 +365,7 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
  //parse so that it knows which index you write to in the binaryInstructions
  FILE *fptr = fopen(fileName, "r");
  int instrNum = 0;
+ int lastInstrNum = 0;
 
  while(1) {
 	 char buffer[MAX_INSTR_LEN];
@@ -452,6 +463,7 @@ void secondPass(char *fileName, map_t *symbolTable, uint32_t *binaryInstructions
 	 	}
 	 }
 	 instrNum++;
+	 lastInstrNum++;
 	 if (feof(fptr)) {
 		 break;
 	 }
