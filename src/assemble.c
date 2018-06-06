@@ -194,6 +194,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 	uint32_t binInstr = 0x04000000; //return value
 	uint32_t cond = 0; //not used, spec doesn't say what to do with it :C
 	uint32_t rd = atoi(&tokens[1][1]) << 12;
+  printf("rd : %d\n", rd >> 12);
 	uint32_t l;
 	uint32_t p;
 	uint32_t u = 0; //not used,
@@ -204,14 +205,15 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 
 
 	if (tokens[2][0] == '=') {
-		if (strlen(tokens[2]) <= 6) { //if less than 0xFF, treat as mov
+    uint32_t expr = strtoul(&tokens[2][3], NULL, 16);
+		if (expr <= 0xFF) { //if less than 0xFF, treat as mov
 			tokens[2][0] = '#'; //changing to mov format so func call will work
+      // printf("Mov function on instr %d\n", state->currAddress);
 			return parseDataProcessing(state->symbolTable, tokens, MOV);
 		} else {
 			//treat address as numerican constant and return ldr rn, [PC, offset]
-			uint32_t constant = atoi(tokens[2]);
       uint32_t newLocation = state->numOfInstr + state->numOfConstants;
-			binaryInstructions[newLocation] = constant;
+			binaryInstructions[newLocation] = expr;
       state->numOfConstants += 1;
 
 			offset = newLocation - state->currAddress;
@@ -233,13 +235,14 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 		p = 0x01000000;
     if (tokens[3] != NULL) {
 			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = atoi(&tokens[3][3]);
+			offset = strtoul(&tokens[3][3], NULL, 16);
+      // atoi(&tokens[3][3]);
 		} else {
 			offset = 0;
 		}
 	} else {
 		p = 0;
-		offset = atoi(&tokens[3][3]); //expression in post-index without the '0x' of hex
+    offset = strtoul(&tokens[3][3], NULL, 16);
 	}
 
 	if (name == LDR) {
