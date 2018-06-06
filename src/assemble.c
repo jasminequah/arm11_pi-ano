@@ -215,7 +215,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
       state->numOfConstants += 1;
 
 			offset = newLocation - state->currAddress;
-			rn = PC_REG << 16; //value of PC reg
+			rn = PC_REG << 16;
 			p  = 0x01000000;
 			l  = 0x00100000;
 			return binInstr | l | p | rn | rd | offset;
@@ -485,8 +485,6 @@ instrName_t toInstrName(char* instrString) {
 					 table.
 */
 void secondPass(char *fileName, state_t* state) {
- //keep track of order of the instructions, pass instruNumber into
- //parse so that it knows which index you write to in the binaryInstructions
 
   FILE *fptr = fopen(fileName, "r");
   uint32_t *binaryInstructions = state->binaryInstructions;
