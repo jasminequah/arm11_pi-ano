@@ -6,6 +6,7 @@
 #include "utilities.h"
 #include "ioutils.h"
 
+
 void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->decoded;
   uint32_t *registers = state->registers;
@@ -237,39 +238,41 @@ void decode(state_t *state) {
     switch (instrNum) {
       case BRANCH:
         state->decoded->offset   = ((int) (pc << 8)) >> 6;
-        state->decoded->cond     = (cond_t) pc >> 28;
+        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
         execute(state, BRANCH);
         break;
       case DATA_PROCESSING:
-        state->decoded->cond     = (cond_t) pc >> 28;
-        state->decoded->isI      = pc & 0x02000000u;
-        state->decoded->isS      = pc & 0x00100000u;
-        state->decoded->opCode   = (opCode_t) ((pc << 7) >> 28);
-        state->decoded->rn       = (pc << 12) >> 28;
-        state->decoded->rd       = (pc << 16) >> 28;
-        state->decoded->rm       = (pc << 28) >> 28;
+        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
+        state->decoded->isI      = pc & IS_I;
+        state->decoded->isS      = pc & IS_S;
+        state->decoded->opCode   = (opCode_t) ((pc << 7) >> (BITS_IN_WORD - 4));
+        state->decoded->rn       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->rd       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->rm       = (pc << RM_SHIFT) >> (BITS_IN_WORD - 4);
         state->decoded->operand2 = (uint16_t)pc;
         execute(state, DATA_PROCESSING);
         break;
       case SINGLE_DATA_TRANSFER:
-        state->decoded->cond     = (cond_t) pc >> 28;
-        state->decoded->isI      = pc & 0x02000000u;
-        state->decoded->isP      = pc & 0x01000000u;
-        state->decoded->isU      = pc & 0x00800000u;
-        state->decoded->isL      = pc & 0x00100000u;
-        state->decoded->rn       = (pc << 12) >> 28;
-        state->decoded->rd       = (pc << 16) >> 28;
-        state->decoded->offset   = (pc << 20) >> 20;
+        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
+        state->decoded->isI      = pc & IS_I;
+        state->decoded->isP      = pc & IS_P;
+        state->decoded->isU      = pc & IS_U;
+        state->decoded->isL      = pc & IS_L;
+        state->decoded->rn       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->rd       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->offset   = (pc << OFFSET_SHIFT) >> (BITS_IN_WORD - 4);
         execute(state, SINGLE_DATA_TRANSFER);
         break;
       case MULTIPLY:
-        state->decoded->cond     = (cond_t) pc >> 28;
-        state->decoded->isA      = pc & 0x00200000u;
-        state->decoded->isS      = pc & 0x00100000u;
-        state->decoded->rd       = (pc << 12) >> 28;
-        state->decoded->rn       = (pc << 16) >> 28;
-        state->decoded->rs       = (pc << 20) >> 28;
-        state->decoded->rm       = (pc << 28) >> 28;
+      /*The positions of rd and rn are interchanged in Multiply,
+      hence the shift numbers are interchanged*/
+        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
+        state->decoded->isA      = pc & IS_A;
+        state->decoded->isS      = pc & IS_S;
+        state->decoded->rd       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->rn       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->rs       = (pc << RS_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->rm       = (pc << RM_SHIFT) >> (BITS_IN_WORD - 4);
         execute(state, MULTIPLY);
         break;
     }
