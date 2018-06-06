@@ -192,23 +192,21 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
 uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 
 	uint32_t binInstr = 0x04000000; //return value
-	uint32_t cond = 0; //not used, spec doesn't say what to do with it :C
+	uint32_t cond = 0xe0000000; //not used, spec doesn't say what to do with it :C
 	uint32_t rd = atoi(&tokens[1][1]) << 12;
-  printf("rd : %d\n", rd >> 12);
 	uint32_t l;
 	uint32_t p;
-	uint32_t u = 0; //not used,
+	uint32_t u = 0;
 	uint32_t i = 0; //not used
 	uint32_t rn;
 	uint32_t offset;
-  uint32_t *binaryInstructions = state->binaryInstructions; //where we store all our binary sollutions
-
+  uint32_t *binaryInstructions = state->binaryInstructions;
 
 	if (tokens[2][0] == '=') {
+    u = 0x1 << 23;
     uint32_t expr = strtoul(&tokens[2][3], NULL, 16);
 		if (expr <= 0xFF) { //if less than 0xFF, treat as mov
 			tokens[2][0] = '#'; //changing to mov format so func call will work
-      // printf("Mov function on instr %d\n", state->currAddress);
 			return parseDataProcessing(state->symbolTable, tokens, MOV);
 		} else {
 			//treat address as numerican constant and return ldr rn, [PC, offset]
@@ -216,11 +214,12 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 			binaryInstructions[newLocation] = expr;
       state->numOfConstants += 1;
 
-			offset = newLocation - state->currAddress;
+			offset = newLocation - state->currAddress + 0x4;
+      printf("offset : %x\n currAdd:%x\n new loc: %d\n", offset, state->currAddress, newLocation);
 			rn = PC_REG << 16;
 			p  = 0x01000000;
 			l  = 0x00100000;
-			return binInstr | l | p | rn | rd | offset;
+			return binInstr | l | p | rn | rd | offset | cond | u;
 		}
 	}
 
@@ -232,17 +231,24 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 
 	int isPreindexed = tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']';
   if (isPreindexed) {
+    printf("is preindexed\n");
 		p = 0x01000000;
     if (tokens[3] != NULL) {
 			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = strtoul(&tokens[3][3], NULL, 16);
-      // atoi(&tokens[3][3]);
+			offset = strtoul(&tokens[3][1], NULL, 16);
+      if (tokens[3][2] == '-') {
+        u == 0x1 << 23;
+      }
 		} else {
 			offset = 0;
 		}
 	} else {
+    if (tokens[3][2] != '-') {
+      printf("not negative\n");
+      u == 0x1 << 23;
+    }
 		p = 0;
-    offset = strtoul(&tokens[3][3], NULL, 16);
+    offset = strtoul(&tokens[3][1], NULL, 16);
 	}
 
 	if (name == LDR) {
@@ -490,8 +496,6 @@ instrName_t toInstrName(char* instrString) {
 void secondPass(char *fileName, state_t* state) {
 
   FILE *fptr = fopen(fileName, "r");
-  uint32_t *binaryInstructions = state->binaryInstructions;
-  map_t *symbolTable = state->symbolTable;
   uint32_t currAddress = state->currAddress;
   // int numOfInstr = 0; this is replaced with the states current address which we increment
   while(1) {
@@ -518,77 +522,77 @@ void secondPass(char *fileName, state_t* state) {
       instrName_t instrName = toInstrName(tokens[0]);
       switch (instrName) {
         case ADD :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, ADD);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, ADD);
       	  break;
       	case SUB :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, SUB);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, SUB);
       	  break;
       	case RSB :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, RSB);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, RSB);
       	  break;
       	case AND :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, AND);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, AND);
       	  break;
       	case EOR :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, EOR);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, EOR);
       	  break;
       	case ORR :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, ORR);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, ORR);
       	  break;
       	case MOV :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, MOV);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, MOV);
       	  break;
       	case TST :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, TST);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, TST);
       	  break;
       	case TEQ :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, TEQ);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, TEQ);
       	  break;
       	case CMP :
-      	  binaryInstructions[currAddress] = parseDataProcessing(symbolTable, tokens, CMP);
+      	  state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, CMP);
       	  break;
       	case MUL :
-      	  binaryInstructions[currAddress] = parseMultiply(symbolTable, tokens, MUL);
+      	  state->binaryInstructions[currAddress] = parseMultiply(state->symbolTable, tokens, MUL);
       	  break;
       	case MLA :
-      	  binaryInstructions[currAddress] = parseMultiply(symbolTable, tokens, MLA);
+      	  state->binaryInstructions[currAddress] = parseMultiply(state->symbolTable, tokens, MLA);
       	  break;
       	case LDR :
-      	  binaryInstructions[currAddress] = parseSDT(state, tokens, LDR);
+      	  state->binaryInstructions[currAddress] = parseSDT(state, tokens, LDR);
       	  break;
       	case STR :
-      	  binaryInstructions[currAddress] = parseSDT(state, tokens, STR);
+      	  state->binaryInstructions[currAddress] = parseSDT(state, tokens, STR);
       	  break;
       	case LSL :
-      	  binaryInstructions[currAddress] = parseSpecial(symbolTable, tokens, LSL);
+      	  state->binaryInstructions[currAddress] = parseSpecial(state->symbolTable, tokens, LSL);
       	  break;
       	case ANDEQ :
-      	  binaryInstructions[currAddress] = parseSpecial(symbolTable, tokens, ANDEQ);
+      	  state->binaryInstructions[currAddress] = parseSpecial(state->symbolTable, tokens, ANDEQ);
       	  break;
       	case BEQ :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, BEQ, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BEQ, currAddress * 4);
       	  break;
       	case BNE :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, BNE, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BNE, currAddress * 4);
       	  break;
       	case BGE :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, BGE, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BGE, currAddress * 4);
       	  break;
       	case BLT :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, BLT, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BLT, currAddress * 4);
       	  break;
       	case BGT :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, BGT, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BGT, currAddress * 4);
       	  break;
       	case BLE :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, BLE, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BLE, currAddress * 4);
       	  break;
       	case B :
-      	  binaryInstructions[currAddress] = parseBranch(symbolTable, tokens, B, currAddress * 4);
+      	  state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, B, currAddress * 4);
       	  break;
       }
-      // instrNum++; remaned instrNum to currAddress coz it makes more sense
-      currAddress += 1;
+      state->currAddress = (state->currAddress) + 1;
+      currAddress = state->currAddress;
     }
   }
 }
