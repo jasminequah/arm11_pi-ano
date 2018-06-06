@@ -188,6 +188,13 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
   return instruction;
 }
 
+uint32_t evalExpression(char* expr) {
+   if (expr[0] == '0' && expr[1] == 'x') {
+		 return strtoul(&expr[2], NULL, 16);
+	 } else {
+		 return atoi(expr);
+	 }
+}
 
 uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 
@@ -205,6 +212,11 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 	if (tokens[2][0] == '=') {
     u = 0x1 << 23;
     uint32_t expr = strtoul(&tokens[2][3], NULL, 16);
+		
+		if ((int) expr < 0) {
+			u = 0x1 << 23;
+		}
+
 		if (expr <= 0xFF) { //if less than 0xFF, treat as mov
 			tokens[2][0] = '#'; //changing to mov format so func call will work
 			return parseDataProcessing(state->symbolTable, tokens, MOV);
@@ -235,20 +247,19 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 		p = 0x01000000;
     if (tokens[3] != NULL) {
 			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = strtoul(&tokens[3][1], NULL, 16);
-      if (tokens[3][2] == '-') {
-        u == 0x1 << 23;
+			offset = evalExpression(&tokens[3][1]);
+      if (tokens[3][2] != '-') {
+        u = 0x1 << 23;
       }
 		} else {
 			offset = 0;
 		}
 	} else {
     if (tokens[3][2] != '-') {
-      printf("not negative\n");
-      u == 0x1 << 23;
+      u = 0x1 << 23;
     }
 		p = 0;
-    offset = strtoul(&tokens[3][1], NULL, 16);
+    offset = evalExpression(&tokens[3][1]);
 	}
 
 	if (name == LDR) {
