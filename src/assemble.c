@@ -219,6 +219,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 
 		if (expr <= 0xFF) { //if less than 0xFF, treat as mov
 			tokens[2][0] = '#'; //changing to mov format so func call will work
+      printf("tokens: %s %s %s\n",tokens[0],tokens[1],tokens[2]);
 			return parseDataProcessing(state->symbolTable, tokens, MOV);
 		} else {
 			//treat address as numerican constant and return ldr rn, [PC, offset]
@@ -236,12 +237,13 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 	}
 
   //if code drops down here we have the last to bullet point cases to deal with
+  int isPreindexed = tokens[3][strlen(tokens[3]) - 1] == ']' || (tokens[3] == NULL);
+
 	if (tokens[2][3] == ']') {
-		tokens[2][3] = '\0';
+		tokens[2][3] = '\0'; //tell where atoi to stop reading in case of preindexed form [Rn]
 	}
 	rn = atoi(&tokens[2][2]) << 16;
 
-	int isPreindexed = tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']';
   if (isPreindexed) {
 		p = 0x01000000;
     if (tokens[3] != NULL) {
@@ -262,7 +264,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
     }
 		p = 0;
 	}
-  
+
 
 	if (name == LDR) {
 		l = 0x00100000; //check
