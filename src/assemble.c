@@ -97,6 +97,7 @@ void getExprBits(uint32_t *instrPtr, char *expression) {
 }
 
 void getShiftBits(uint32_t *instrPtr, char **remainingTokens) {
+  printf("tokens: %s, %s, %s\n", remainingTokens[0], remainingTokens[1], remainingTokens[2]);
   uint32_t rm = atoi(&remainingTokens[0][1]);
   uint32_t shiftType;
 
@@ -119,7 +120,7 @@ void getShiftBits(uint32_t *instrPtr, char **remainingTokens) {
     uint32_t rs = atoi(&remainingTokens[2][1]);
     *instrPtr = *instrPtr | (rs << RS_SHIFT) | SHIFT_BY_REG_BIT;
   }
-
+  printf("instruction from getShift: 0x%x\n", *instrPtr);
   *instrPtr = *instrPtr | (shiftType << SHIFT_TYPE_SHIFT) | rm;
 
 }
@@ -238,43 +239,61 @@ uint32_t evalExpression(char* expr) {
 	 }
 }
 
+uint32_t getRn(char **tokens) {
+  if (tokens[2][3] == ']') {
+    tokens[2][3] = '\0';
+  }
+  return atoi(&tokens[2][2]) << 16;
+}
+
+void parseRm(char **tokens, uint32_t *instr, int numTokens) {
+  uint32_t u = 0;
+  uint32_t offset = 0;
+  uint32_t i = 0;
+
+  if (tokens[3][0] != '-') {
+    u = 0x1 << 23;
+  }
+  if (numTokens == 6) {
+    tokens[numTokens - 1][strlen(tokens[numTokens - 1]) - 1] = '\0';
+    getShiftBits(instr, &tokens[3]);
+  } else {
+    offset = atoi(&tokens[3][1]);
+  }
+  i = 1 << 25;
+  *instr = *instr | u | offset | i;
+}
+
 uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens) {
 
-	uint32_t binInstr = 0x04000000; //return value
-	uint32_t cond = 0xe0000000; //not used, spec doesn't say what to do with it :C
+	uint32_t binInstr = 0x04000000;
+	uint32_t cond = 0xe0000000;
 	uint32_t rd = atoi(&tokens[1][1]) << 12;
 	uint32_t l;
 	uint32_t p;
 	uint32_t u = 0;
-	uint32_t i = 0; //not used
+	uint32_t i = 0;
 	uint32_t rn;
 	uint32_t offset;
   uint32_t *binaryInstructions = state->binaryInstructions;
+
 	if (tokens[2][0] == '=') {
     u = 0x1 << 23;
     uint32_t expr = strtoul(&tokens[2][3], NULL, 16);
 
-		if ((int) expr < 0) {
-			u = 0x1 << 23;
-		}
-
-		if (expr <= 0xFF) { //if less than 0xFF, treat as mov
-			tokens[2][0] = '#'; //changing to mov format so func call will work
-      tokens[0] = "mov";
-      printf("tokens: %s %s %s\n",tokens[0],tokens[1],tokens[2]);
-
+		if (expr <= 0xFF) {
+			tokens[2][0] = '#';
+      tokens[0]    = "mov";
 			return parseDataProcessing(state->symbolTable, tokens, MOV, 3);
 		} else {
-			//treat address as numerican constant and return ldr rn, [PC, offset]
-      uint32_t newLocation = state->numOfInstr + state->numOfConstants;
+      uint32_t newLocation            = state->numOfInstr + state->numOfConstants;
 			binaryInstructions[newLocation] = expr;
-      state->numOfConstants += 1;
-
+      state->numOfConstants          += 1;
 			offset = 0x4 * (newLocation - state->currAddress) - 0x8;
       if (offset < 0) {
         offset = 0;
       }
-      printf("offset : %x\n currAdd:%x\n new loc: %d\n", offset, state->currAddress, newLocation);
+
 			rn = PC_REG << 16;
 			p  = 0x01000000;
 			l  = 0x00100000;
@@ -282,38 +301,50 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
 		}
 	}
 
-  //if code drops down here we have the last to bullet point cases to deal with
-  int isPreindexed = numTokens < 4 || tokens[3][strlen(tokens[3]) - 1] == ']';
+  int preindexed = numTokens < 4 || tokens[numTokens - 1][strlen(tokens[numTokens - 1]) - 1] == ']';
 
-	if (tokens[2][3] == ']') {
-		tokens[2][3] = '\0'; //tell where atoi to stop reading in case of preindexed form [Rn]
-	}
-	rn = atoi(&tokens[2][2]) << 16;
+  rn = getRn(tokens);
 
-  if (isPreindexed) {
+  if (preindexed) {
 		p = 0x01000000;
-    if (numTokens == 4) {
-			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = evalExpression(&tokens[3][2]);
-      if (tokens[3][1] != '-') {
-        u = 0x1 << 23;
-        offset = evalExpression(&tokens[3][1]);
+    if (numTokens >= 4) {
+      if (tokens[3][0] == 'r' || tokens[3][1] == 'r') {
+        //form : [rn, +/-Rm shift]
+        parseRm(tokens, &binInstr, numTokens);
+
+      } else {
+        //form : [rn, expr]
+  			tokens[3][strlen(tokens[3]) - 1] = '\0';
+  			offset = evalExpression(&tokens[3][2]);
+        if (tokens[3][1] != '-') {
+          u      = 0x1 << 23;
+          offset = evalExpression(&tokens[3][1]);
+        }
       }
 		} else {
+      //form [rn]
 			offset = 0;
-      u = 0x1 << 23;
+      u      = 0x1 << 23;
 		}
 	} else {
-    offset = evalExpression(&tokens[3][2]);
-    if (tokens[3][2] != '-') {
-      u = 0x1 << 23;
-      offset = evalExpression(&tokens[3][1]);
+    p = 0;
+
+    if (tokens[3][0] == 'r' || tokens[3][1] == 'r') {
+       // form [rn] {+/-}Rm{,<shift>}
+       parseRm(tokens, &binInstr, numTokens);
+
+    } else {
+      //form [Rn], expr
+      offset = evalExpression(&tokens[3][2]);
+      if (tokens[3][2] != '-') {
+        u      = 0x1 << 23;
+        offset = evalExpression(&tokens[3][1]);
+      }
     }
-		p = 0;
 	}
 
 	if (name == LDR) {
-		l = 0x00100000; //check
+		l = 0x00100000;
 	} else {
 		l = 0;
 	}
@@ -321,6 +352,9 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
 	binInstr = binInstr | cond | rd | l | p | u | i | rn | offset;
 	return binInstr;
 }
+
+
+
 
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
