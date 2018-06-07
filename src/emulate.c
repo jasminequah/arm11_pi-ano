@@ -260,7 +260,7 @@ void decode(state_t *state) {
         state->decoded->isL      = pc & IS_L;
         state->decoded->rn       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
         state->decoded->rd       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->offset   = (pc << OFFSET_SHIFT) >> (BITS_IN_WORD - 4);
+        state->decoded->offset   = (pc << OFFSET_SHIFT) >> OFFSET_SHIFT;
         execute(state, SINGLE_DATA_TRANSFER);
         break;
       case MULTIPLY:

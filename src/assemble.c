@@ -212,7 +212,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 	if (tokens[2][0] == '=') {
     u = 0x1 << 23;
     uint32_t expr = strtoul(&tokens[2][3], NULL, 16);
-		
+
 		if ((int) expr < 0) {
 			u = 0x1 << 23;
 		}
@@ -226,7 +226,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 			binaryInstructions[newLocation] = expr;
       state->numOfConstants += 1;
 
-			offset = newLocation - state->currAddress + 0x4;
+			offset = newLocation - state->currAddress + 0x1;
       printf("offset : %x\n currAdd:%x\n new loc: %d\n", offset, state->currAddress, newLocation);
 			rn = PC_REG << 16;
 			p  = 0x01000000;
@@ -243,13 +243,13 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 
 	int isPreindexed = tokens[3][strlen(tokens[3]) - 1] == ']' || tokens[2][3] == ']';
   if (isPreindexed) {
-    printf("is preindexed\n");
 		p = 0x01000000;
     if (tokens[3] != NULL) {
 			tokens[3][strlen(tokens[3]) - 1] = '\0';
-			offset = evalExpression(&tokens[3][1]);
-      if (tokens[3][2] != '-') {
+			offset = evalExpression(&tokens[3][2]);
+      if (tokens[3][1] != '-') {
         u = 0x1 << 23;
+        offset = evalExpression(&tokens[3][1]);
       }
 		} else {
 			offset = 0;
