@@ -226,7 +226,7 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 			binaryInstructions[newLocation] = expr;
       state->numOfConstants += 1;
 
-			offset = newLocation - state->currAddress + 0x1;
+			offset = newLocation - state->currAddress + 0x4;
       printf("offset : %x\n currAdd:%x\n new loc: %d\n", offset, state->currAddress, newLocation);
 			rn = PC_REG << 16;
 			p  = 0x01000000;
@@ -255,12 +255,14 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name) {
 			offset = 0;
 		}
 	} else {
+    offset = evalExpression(&tokens[3][2]);
     if (tokens[3][2] != '-') {
       u = 0x1 << 23;
+      offset = evalExpression(&tokens[3][1]);
     }
 		p = 0;
-    offset = evalExpression(&tokens[3][1]);
 	}
+  
 
 	if (name == LDR) {
 		l = 0x00100000; //check
