@@ -11,8 +11,9 @@
 #define BITS_IN_WORD          32
 #define HEX_BASE              16
 #define DECIMAL_BASE          10
+#define PIPELINE_OFFSET       0x8
 
-#define S_BIT             0x00080000
+#define S_BIT             0x00100000
 #define I_BIT             0x02000000
 #define ALWAYS_COND_CODE  0xe0000000
 #define EQ_COND_CODE      0x00000000
@@ -27,6 +28,9 @@
 #define RS_SHIFT             8
 #define SHIFT_CONSTANT_SHIFT 7
 #define SHIFT_TYPE_SHIFT     5
+#define LOWER_24_BIT_MASK    0x00ffffff
+#define COND_OFFSET          28
+#define BRANCH_MASK          0x0a000000
 
 typedef struct map {
   char *label;
@@ -331,13 +335,11 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 uint32_t getMemAddress(map_t *symbolTable, char *label) {
   map_t *currMap = symbolTable;
   while (1) {
-    printf("label in map: %s, label: %s\n", currMap->label, label);
     if (strcmp(currMap->label, label) == 0) {
       break;
     }
     currMap++;
   }
-  printf("========= exits getMemAddress while =========\n");
   return currMap->memAddress;
 }
 
@@ -370,9 +372,10 @@ uint32_t parseBranch(map_t *symbolTable, char **tokens, instrName_t name, int cu
         cond = -1;
         break;
     }
-  uint32_t destAddress = getMemAddress(symbolTable, tokens[0]);
-  uint32_t offset      = destAddress - ((uint32_t) (currAddress) * 4);
-  return (cond << 28) | (10 << 24) | offset;
+  uint32_t destAddress = getMemAddress(symbolTable, tokens[1]);
+  int32_t signedOffset = (((int) destAddress - currAddress) - PIPELINE_OFFSET);
+  int32_t offset       = (signedOffset >> 2) & LOWER_24_BIT_MASK;
+  return (cond << COND_OFFSET) | BRANCH_MASK | offset;
 }
 
 /* First Pass: Makes symbol table-
@@ -411,7 +414,7 @@ int firstPass(char* fileName, map_t *symbolTable) {
       break;
     }
     int strLength = strlen(buffer) + 1; //for the \0 char
-    if (buffer[strLength - 1] == ':') {
+    if (buffer[strLength - 2] == ':') {
       if (tableSize >= MAX_SYMBOL_TABLE_SIZE) {
         printf("exceeded symbolTableSize");
         return 0;
@@ -422,9 +425,8 @@ int firstPass(char* fileName, map_t *symbolTable) {
       tableSize++;
     } else {
       numOfInstr++;
+      memAddress += ADDR_INC;
     }
-    memAddress += ADDR_INC;
-
   }
 
   fclose(fptr);
