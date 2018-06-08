@@ -77,7 +77,7 @@ void getImmediate(uint32_t *instrPtr, uint32_t operand2) {
 
   while (operand2 > MAX_NO_ROTATE_IMM) {
     if (rotateAmount > MAX_ROTATE) {
-      printf("Error: Immediate value exceeds maximum representable value");
+      printf("Error: Immediate value exceeds maximum representable value\n");
       break;
     }
     rotateAmount++;
@@ -120,7 +120,6 @@ void getShiftBits(uint32_t *instrPtr, char **remainingTokens) {
     uint32_t rs = atoi(&remainingTokens[2][1]);
     *instrPtr = *instrPtr | (rs << RS_SHIFT) | SHIFT_BY_REG_BIT;
   }
-  printf("instruction from getShift: 0x%x\n", *instrPtr);
   *instrPtr = *instrPtr | (shiftType << SHIFT_TYPE_SHIFT) | rm;
 
 }
@@ -223,7 +222,7 @@ uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name
       char *newTokens[6] = {"mov", tokens[1], tokens[1], "lsl", tokens[2]};
       return parseDataProcessing(symbolTable, newTokens, MOV, numTokens + 2);
     default:
-      printf("Error: invalid instruction");
+      printf("Error: invalid instruction\n");
       opCode = -1;
       break;
   }
