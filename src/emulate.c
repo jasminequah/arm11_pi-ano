@@ -131,7 +131,7 @@ void executeMultiply(state_t *state) {
   }
 }
 
-void checkGPIOPins(uint32_t newBase) {
+int checkGPIOPins(uint32_t newBase) {
   if (newBase == PIN_20_TO_29) {
     printf("One GPIO pin from 20 to 29 has been accessed\n");
   } else if (newBase == PIN_10_TO_19) {
@@ -144,8 +144,9 @@ void checkGPIOPins(uint32_t newBase) {
     printf("PIN ON\n");
   } else {
     printf("Error: Out of bounds memory access at address 0x%08x\n", newBase);
+    return 0;
   }
-  return;
+  return 1;
 }
 
 void executeSDT(state_t *state) {
@@ -184,9 +185,18 @@ void executeSDT(state_t *state) {
 
   if (decoded->isP) {
     if (newBase + 3 > MEMORY_SIZE) {
-      checkGPIOPins(newBase);
-      return;
+      if (!checkGPIOPins(newBase)) {
+        return;
+      } else {
+        if (decoded->isL) {
+          registers[decoded->rd] = newBase;
+          return;
+        } else {
+          return;
+        }
+      }
     }
+
     if (decoded->isL) {
       registers[decoded->rd] = loadMemory(memory, newBase);
     } else {
