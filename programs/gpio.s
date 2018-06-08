@@ -6,9 +6,9 @@ ldr r2, =0x20200028
 str r1, [r2]
 ldr r3, =0x2020001C
 str r1, [r3]
-mov r5, #10
+mov r5, #100
 mainloop:
-mov r4, #50
+mov r4, #100
 loop:
 str r1, [r3]
 sub r4, r4, #1
