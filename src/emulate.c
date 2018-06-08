@@ -136,10 +136,10 @@ void executeSDT(state_t *state) {
   uint32_t* registers      = state->registers;
   uint8_t* memory          = state->memory;
   uint32_t baseRegContents = registers[decoded->rn];
-
-  if (decoded->rn == PC_REG) {
-    baseRegContents += 0x8;
-  }
+  //
+  // if (decoded->rn == PC_REG) {
+  //   baseRegContents += 0x8;
+  // }
 
   uint32_t offset = registers[(decoded->offset) & FIRST_4_BITS];
   if (decoded->isI) {
@@ -196,7 +196,7 @@ void executeSDT(state_t *state) {
 
 void executeBranch(state_t *state) {
   decoded_t* decoded = state->pipeline->decoded;
-  state->registers[PC_REG] = ((int) state->registers[PC_REG]) + decoded->offset + 0x4u;
+  state->registers[PC_REG] = ((int) state->registers[PC_REG]) + decoded->offset;
 }
 
 /* Executes calls to different functions if condition satisfied
@@ -224,7 +224,6 @@ void execute(state_t *state) {
 	executeBranch(state);
         break;
     }
-
   }
 }
 
@@ -233,7 +232,7 @@ void decode(state_t *state) {
   pipeline_t *pipeline = state->pipeline;
   if (!(instruction)) {
     state->isTerminated       = 1;
-    state->registers[PC_REG] += 0x4u;
+    // state->registers[PC_REG] += 0x4u;
   } else {
     instr_t instrNum = getInstructionNum(instruction);
     switch (instrNum) {
@@ -286,7 +285,7 @@ void decode(state_t *state) {
 
 void fetch(state_t *state) {
   if (state->registers[PC_REG] > MEMORY_SIZE) {
-    state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
+    // state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
     fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
   }
   state->pipeline->fetched = getInstruction(state);
