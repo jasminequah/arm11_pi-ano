@@ -6,17 +6,17 @@ ldr r2, =0x20200028
 str r1, [r2]
 ldr r3, =0x2020001C
 str r1, [r3]
-mov r5, #100
+ldr r5, =0xfffff
 mov r7, #0
 mainloop:
-mov r4, #0xff
+ldr r4, =0xfffff
 loop:
 str r1, [r3]
 sub r4, r4, #1
 cmp r4, #0
 blt loop
 str r7, [r3]
-mov r4, #0xff
+ldr r4, =0xfffff
 loop2:
 str r7, [r3]
 sub r4, r4, #1
