@@ -109,15 +109,23 @@ typedef struct arm_decoded {
 
 } decoded_t;
 
+typedef struct arm_pipeline {
+  decoded_t *decoded;
+  uint32_t fetched;
+} pipeline_t;
+
 /* Holds the state of the emulator. */
 typedef struct arm_state {
   uint32_t *registers;
   uint8_t *memory;
 
-  decoded_t *decoded;
+  pipeline_t *pipeline;
 
+  instr_t instruction;
+  uint32_t bitInstruction;
+
+  int isFetched;
   int isTerminated;
 } state_t;
 
 #endif
-

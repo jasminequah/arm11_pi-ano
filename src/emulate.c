@@ -8,7 +8,7 @@
 
 
 void executeDataProcessing(state_t *state) {
-  decoded_t *decoded = state->decoded;
+  decoded_t *decoded = state->pipeline->decoded;
   uint32_t *registers = state->registers;
 
   uint32_t operand1 = registers[decoded->rn];
@@ -108,16 +108,16 @@ void executeDataProcessing(state_t *state) {
 }
 
 void executeMultiply(state_t *state) {
-  decoded_t* decoded  = state->decoded;
+  decoded_t* decoded  = state->pipeline->decoded;
   uint32_t* registers = state->registers;
-  if (state->decoded->isA) {
+  if (decoded->isA) {
     registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs] + registers[decoded->rn];
   } else {
     registers[decoded->rd] = registers[decoded->rm] * registers[decoded->rs];
   }
 
-  if (state->decoded->isS) {
-    if (state->decoded->rd >> (BITS_IN_WORD - 1)) {
+  if (decoded->isS) {
+    if (decoded->rd >> (BITS_IN_WORD - 1)) {
       state->registers[CPSR_REG] = state->registers[CPSR_REG] | N_BIT;
     } else {
       state->registers[CPSR_REG] = state->registers[CPSR_REG] & ~N_BIT;
@@ -132,7 +132,7 @@ void executeMultiply(state_t *state) {
 }
 
 void executeSDT(state_t *state) {
-  decoded_t* decoded       = state->decoded;
+  decoded_t* decoded       = state->pipeline->decoded;
   uint32_t* registers      = state->registers;
   uint8_t* memory          = state->memory;
   uint32_t baseRegContents = registers[decoded->rn];
@@ -195,7 +195,7 @@ void executeSDT(state_t *state) {
  * Adds offset from bits 0 to 23 of decoded instruction to PC */
 
 void executeBranch(state_t *state) {
-  decoded_t* decoded = state->decoded;
+  decoded_t* decoded = state->pipeline->decoded;
   state->registers[PC_REG] = ((int) state->registers[PC_REG]) + decoded->offset + 0x4u;
 }
 
@@ -203,11 +203,11 @@ void executeBranch(state_t *state) {
  * Function called depends on which of 4 instructions it is executing
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
-void execute(state_t *state, instr_t instruction) {
+void execute(state_t *state) {
   //printf("Instruction number: %u\n", instruction);
   //If cond not satisfied may still want to check if all 0 instruction encountered?
-  if (checkCond(state, state->decoded->cond)) {
-    switch (instruction) {
+  if (checkCond(state, state->pipeline->decoded->cond)) {
+    switch (state->instruction) {
       case DATA_PROCESSING:
 	executeDataProcessing(state);
 	break;
@@ -229,54 +229,71 @@ void execute(state_t *state, instr_t instruction) {
 }
 
 void decode(state_t *state) {
-  uint32_t pc = getInstruction(state);
-  if (!pc) {
+  uint32_t instruction = state->pipeline->fetched;
+  pipeline_t *pipeline = state->pipeline;
+  if (!(instruction)) {
     state->isTerminated       = 1;
     state->registers[PC_REG] += 0x4u;
   } else {
-    instr_t instrNum = getInstructionNum(pc);
+    instr_t instrNum = getInstructionNum(instruction);
     switch (instrNum) {
       case BRANCH:
-        state->decoded->offset   = ((int) (pc << 8)) >> 6;
-        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
-        execute(state, BRANCH);
+        pipeline->decoded->offset   = ((int) (instruction << 8)) >> 6;
+        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+        // execute(state, BRANCH);
+        state->instruction = BRANCH;
         break;
       case DATA_PROCESSING:
-        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
-        state->decoded->isI      = pc & IS_I;
-        state->decoded->isS      = pc & IS_S;
-        state->decoded->opCode   = (opCode_t) ((pc << 7) >> (BITS_IN_WORD - 4));
-        state->decoded->rn       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->rd       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->rm       = (pc << RM_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->operand2 = (uint16_t)pc;
-        execute(state, DATA_PROCESSING);
+        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+        pipeline->decoded->isI      = instruction & IS_I;
+        pipeline->decoded->isS      = instruction & IS_S;
+        pipeline->decoded->opCode   = (opCode_t) ((instruction << 7) >> (BITS_IN_WORD - 4));
+        pipeline->decoded->rn       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->rd       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->rm       = (instruction << RM_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->operand2 = (uint16_t)instruction;
+        // execute(state, DATA_PROCESSING);
+        state->instruction = DATA_PROCESSING;
         break;
       case SINGLE_DATA_TRANSFER:
-        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
-        state->decoded->isI      = pc & IS_I;
-        state->decoded->isP      = pc & IS_P;
-        state->decoded->isU      = pc & IS_U;
-        state->decoded->isL      = pc & IS_L;
-        state->decoded->rn       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->rd       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->offset   = (pc << OFFSET_SHIFT) >> OFFSET_SHIFT;
-        execute(state, SINGLE_DATA_TRANSFER);
+        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+        pipeline->decoded->isI      = instruction & IS_I;
+        pipeline->decoded->isP      = instruction & IS_P;
+        pipeline->decoded->isU      = instruction & IS_U;
+        pipeline->decoded->isL      = instruction & IS_L;
+        pipeline->decoded->rn       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->rd       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->offset   = (instruction << OFFSET_SHIFT) >> OFFSET_SHIFT;
+        // execute(state, SINGLE_DATA_TRANSFER);
+        state->instruction = SINGLE_DATA_TRANSFER;
         break;
       case MULTIPLY:
       /*The positions of rd and rn are interchanged in Multiply,
       hence the shift numbers are interchanged*/
-        state->decoded->cond     = (cond_t) pc >> PC_SHIFT;
-        state->decoded->isA      = pc & IS_A;
-        state->decoded->isS      = pc & IS_S;
-        state->decoded->rd       = (pc << RN_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->rn       = (pc << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->rs       = (pc << RS_SHIFT) >> (BITS_IN_WORD - 4);
-        state->decoded->rm       = (pc << RM_SHIFT) >> (BITS_IN_WORD - 4);
-        execute(state, MULTIPLY);
+        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+        pipeline->decoded->isA      = instruction & IS_A;
+        pipeline->decoded->isS      = instruction & IS_S;
+        pipeline->decoded->rd       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->rn       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->rs       = (instruction << RS_SHIFT) >> (BITS_IN_WORD - 4);
+        pipeline->decoded->rm       = (instruction << RM_SHIFT) >> (BITS_IN_WORD - 4);
+        // execute(state, MULTIPLY);
+        state->instruction = MULTIPLY;
         break;
     }
   }
+}
+
+void fetch(state_t *state) {
+  if (state->registers[PC_REG] > MEMORY_SIZE) {
+    state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
+    fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
+  }
+  state->pipeline->fetched = getInstruction(state);
+}
+
+void incrementPC(state_t *state) {
+  state->registers[PC_REG] += PC_INCREMENT;
 }
 
 
@@ -293,19 +310,26 @@ int main(int argc, char* argv[]) {
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state->isTerminated) {
-    if (state->registers[PC_REG] > MEMORY_SIZE) {
-      state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
-      fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
-      return EXIT_FAILURE;
-    } else {
+    // if (state->registers[PC_REG] > MEMORY_SIZE) {
+    //   state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
+    //   fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
+    //   return EXIT_FAILURE;
+    // } else {
+    //   decode(state);
+    // }
+    //
+    // state->registers[PC_REG] += PC_INCREMENT;
+    if (state->pipeline->decoded != NULL) {
+      execute(state);
+    }
+    if (state->isFetched) {
       decode(state);
     }
-
-    state->registers[PC_REG] += PC_INCREMENT;
+    fetch(state);
+    incrementPC(state);
   }
 
   printState(state);
 
   return EXIT_SUCCESS;
 }
-

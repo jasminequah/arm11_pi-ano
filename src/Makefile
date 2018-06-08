@@ -15,6 +15,6 @@ utilities.o: utilities.c definitions.h
 ioutils.o: ioutils.c definitions.h
 	$(CC) $(CFLAGS) ioutils.c -c -o ioutils.o
 clean:
-	-rm *.o emulate
+	-rm *.o
 
 .PHONY: clean
