@@ -290,6 +290,7 @@ void fetch(state_t *state) {
     fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
   }
   state->pipeline->fetched = getInstruction(state);
+  state->isFetched = 1;
 }
 
 void incrementPC(state_t *state) {
