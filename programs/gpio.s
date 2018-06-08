@@ -8,14 +8,14 @@ ldr r3, =0x2020001C
 str r1, [r3]
 mov r5, #100
 mainloop:
-mov r4, #100
+mov r4, #0xff
 loop:
 str r1, [r3]
 sub r4, r4, #1
 cmp r4, #0
 blt loop
 str r1, [r2]
-mov r4, #50
+mov r4, #0xff
 loop2:
 str r1, [r2]
 sub r4, r4, #1
