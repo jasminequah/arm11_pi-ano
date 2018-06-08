@@ -12,10 +12,10 @@ loop:
 sub r4, r4, #1
 cmp r4, #0
 bne loop
-str r6, [r2]
+str r1, [r2]
 ldr r4, =0xabeefa
-loop2:
+loopTwo:
 sub r4, r4, #1
 cmp r4, #0
-bne loop2
+bne loopTwo
 b mainloop
