@@ -5,18 +5,17 @@ ldr r1, =0x00010000
 ldr r2, =0x20200028
 str r1, [r2]
 ldr r3, =0x2020001C
-str r1, [r3]
 mainloop:
-ldr r4, =0xffffff
-loop:
+ldr r4, =0xabeefa
 str r1, [r3]
+loop:
 sub r4, r4, #1
 cmp r4, #0
-blt loop
+bne loop
 str r6, [r2]
-ldr r4, =0xfffffff
+ldr r4, =0xabeefa
 loop2:
 sub r4, r4, #1
 cmp r4, #0
-blt loop2
+bne loop2
 b mainloop
