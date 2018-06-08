@@ -46,6 +46,13 @@
 #define IS_L 0x00100000u
 #define IS_A 0x00200000u
 
+/* GPIO pins */
+#define PIN_OFF      0x20200028u
+#define PIN_ON       0x2020001cu
+#define PIN_0_TO_9   0x20200000u
+#define PIN_10_TO_19 0x20200004u
+#define PIN_20_TO_29 0x20200008u
+
 /* Instructions */
 typedef enum {
   DATA_PROCESSING,
@@ -120,4 +127,3 @@ typedef struct arm_state {
 } state_t;
 
 #endif
-
