@@ -170,6 +170,7 @@ state_t *newState(void) {
     return NULL;
   }
 
+  state->isDecoded    = 0;
   state->isFetched    = 0;
   state->isTerminated = 0;
 

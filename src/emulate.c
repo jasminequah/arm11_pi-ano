@@ -197,6 +197,8 @@ void executeSDT(state_t *state) {
 void executeBranch(state_t *state) {
   decoded_t* decoded = state->pipeline->decoded;
   state->registers[PC_REG] = ((int) state->registers[PC_REG]) + decoded->offset;
+  state->isDecoded = 0;
+  state->isFetched = 0;
 }
 
 /* Executes calls to different functions if condition satisfied
@@ -281,6 +283,7 @@ void decode(state_t *state) {
         break;
     }
   }
+  state->isDecoded = 1;
 }
 
 void fetch(state_t *state) {
@@ -319,7 +322,7 @@ int main(int argc, char* argv[]) {
     // }
     //
     // state->registers[PC_REG] += PC_INCREMENT;
-    if (state->pipeline->decoded != NULL) {
+    if (state->isDecoded) {
       execute(state);
     }
     if (state->isFetched) {

@@ -7,6 +7,7 @@
 #define MEMORY_SIZE  65536
 #define NUM_REGS     17
 #define PC_INCREMENT 0x4
+#define PIPELINE_OFFSET 0x8
 
 /* Specific registers */
 #define SP_REG   13
@@ -125,6 +126,7 @@ typedef struct arm_state {
   uint32_t bitInstruction;
 
   int isFetched;
+  int isDecoded;
   int isTerminated;
 } state_t;
 
