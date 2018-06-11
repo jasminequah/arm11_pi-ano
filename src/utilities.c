@@ -47,10 +47,11 @@ uint32_t loadMemory(uint8_t *memory, uint32_t memLoc) {
 }
 
 void storeMemory(state_t *state, uint32_t memLoc) {
-  state->memory[memLoc + 3] = state->registers[state->decoded->rd] >> 24;
-  state->memory[memLoc + 2] = (state->registers[state->decoded->rd] << 8) >> 24;
-  state->memory[memLoc + 1] = (state->registers[state->decoded->rd] << 16) >> 24;
-  state->memory[memLoc]     = (state->registers[state->decoded->rd] << 24) >> 24;
+  decoded_t *decoded = state->pipeline->decoded;
+  state->memory[memLoc + 3] = state->registers[decoded->rd] >> 24;
+  state->memory[memLoc + 2] = (state->registers[decoded->rd] << 8) >> 24;
+  state->memory[memLoc + 1] = (state->registers[decoded->rd] << 16) >> 24;
+  state->memory[memLoc]     = (state->registers[decoded->rd] << 24) >> 24;
 }
 
 uint32_t barrelShifter(uint32_t value, int shiftAmount, int *carryOut, shiftType_t shiftType) {
@@ -84,7 +85,7 @@ uint32_t barrelShifter(uint32_t value, int shiftAmount, int *carryOut, shiftType
  * Returns 0 or 1 accordingly */
 
 int checkCond(state_t *state, cond_t cond) {
-  if (state->decoded->cond == 14) {
+  if (state->pipeline->decoded->cond == 14) {
     return 1;
 
   } else {
@@ -146,10 +147,15 @@ state_t *newState(void) {
     return NULL;
   }
 
-  state->decoded = malloc(sizeof(decoded_t));
-  if (state->decoded == NULL) {
-    printf("could not allocate space for decoded struct.\n");
+  state->pipeline = malloc(sizeof(pipeline_t));
+  if (state->pipeline == NULL) {
+    printf("could not allocate space for pipeline struct.\n");
     return NULL;
+  }
+
+  state->pipeline->decoded = malloc(sizeof(decoded_t));
+  if (state->pipeline->decoded == NULL) {
+    printf("could not allocate space for decoded struct");
   }
 
   state->registers = calloc(NUM_REGS, sizeof(uint32_t));
@@ -164,6 +170,8 @@ state_t *newState(void) {
     return NULL;
   }
 
+  state->isDecoded    = 0;
+  state->isFetched    = 0;
   state->isTerminated = 0;
 
   return state;
