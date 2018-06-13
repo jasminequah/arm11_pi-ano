@@ -18,6 +18,7 @@ uint32_t evalExpression(char* expr);
 uint32_t getRn(char **tokens);
 void parseRm(char **tokens, uint32_t *instr, int numTokens);
 uint32_t getMemAddress(map_t *symbolTable, char *label);
+map_t newMap(char *label, uint16_t memAddress);
 state_t* newState(int numOfInstructions, map_t *symbolTable);
 
 

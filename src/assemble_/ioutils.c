@@ -7,24 +7,6 @@
 #include "utilities.h"
 #include "parse.h"
 
-/* First Pass: Makes symbol table-
-        1)Associate each label(string) with a memory address(integer)
-	 Second Pass:
-	      1) Read OpCode mnemonic
-				2) Read operand fields
-				3) Replace label with corresponding references
-				4) Generate binary encoding of instruction
-*/
-
-map_t newMap(char *label, uint16_t memAddress) {
-  char *labelOnHeap = malloc(511);
-  strcpy(labelOnHeap, label);
-  map_t map;
-  map.label = labelOnHeap;
-  map.memAddress = memAddress;
-  return map;
-}
-
 int firstPass(char* fileName, map_t *symbolTable) {
 
   FILE *fptr = fopen(fileName, "r");
