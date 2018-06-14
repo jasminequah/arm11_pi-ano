@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "definitions.h"
+#include "parse.h"
 
 uint32_t getOperand(char *expression);
 uint32_t rotateLeftByTwo(uint32_t n);
@@ -20,6 +21,7 @@ void parseRm(char **tokens, uint32_t *instr, int numTokens);
 uint32_t getMemAddress(map_t *symbolTable, char *label);
 map_t newMap(char *label, uint16_t memAddress);
 state_t* newState(int numOfInstructions, map_t *symbolTable);
-
+instrName_t toInstrName(char* instrString);
+void parse(state_t *state, char **tokens, instrName_t instruction, int num_tokens);
 
 #endif

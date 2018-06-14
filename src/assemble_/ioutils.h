@@ -7,10 +7,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include "definitions.h"
-#include "utilities.h"
+#include "parse.h"
 
 int firstPass(char* fileName, map_t *symbolTable);
-instrName_t toInstrName(char* instrString);
 void secondPass(char *fileName, state_t* state);
 void writeBinary(char* fileName, state_t *state);
 

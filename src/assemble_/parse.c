@@ -10,7 +10,6 @@
 uint32_t parseDataProcessing(map_t *symbolTable, char **tokens, instrName_t name, int numTokens) {
   uint32_t opCode;
 
-  // Set condition to always
   uint32_t instruction = ALWAYS_COND_CODE;
 
   switch(name) {
@@ -116,11 +115,9 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
 		p = 0x01000000;
     if (numTokens >= 4) {
       if (tokens[3][0] == 'r' || tokens[3][1] == 'r') {
-        //form : [rn, +/-Rm shift]
         parseRm(tokens, &binInstr, numTokens);
 
       } else {
-        //form : [rn, expr]
   			tokens[3][strlen(tokens[3]) - 1] = '\0';
   			offset = evalExpression(&tokens[3][2]);
         if (tokens[3][1] != '-') {
@@ -129,7 +126,6 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
         }
       }
 		} else {
-      //form [rn]
 			offset = 0;
       u      = 0x1 << 23;
 		}
@@ -137,11 +133,9 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
     p = 0;
 
     if (tokens[3][0] == 'r' || tokens[3][1] == 'r') {
-       // form [rn] {+/-}Rm{,<shift>}
        parseRm(tokens, &binInstr, numTokens);
 
     } else {
-      //form [Rn], expr
       offset = evalExpression(&tokens[3][2]);
       if (tokens[3][2] != '-') {
         u      = 0x1 << 23;
@@ -161,7 +155,6 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
-	// mul r2, r1, r0 = 0x910002e0
 	uint32_t code = 0xe0 << 24;
 
 	char* registers;
@@ -173,45 +166,35 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 		code += (0x2 << 20);
 	}
 
-	// code = 0x20e0 or 0x00e0
-
-	//Rd
 	registers = tokens[1];
 	num = registers[1] - '0';
 	if (registers[2] != '\0') {
 		num = (num * 10) + (registers[2] - '0');
 	}
 	code += (num << 16);
-	//code = 0x2De0 or 0x0De0
 
-	//Rm
 	registers = tokens[2];
 	num = registers[1] - '0';
 	if (registers[2] != '\0') {
 		num = (num * 10) + (registers[2] - '0');
 	}
 	code += ((0x9 << 4) + num);
-	//code = 0x9M002De0 or 0x9M000De0
 
-	//Rs
 	registers = tokens[3];
 	num = registers[1] - '0';
 	if (registers[2] != '\0') {
 		num = (num * 10) + (registers[2] - '0');
 	}
 	code += (num << 8);
-	//code = 0x9M0S2De0 or 0x9M0S0De0
 
 	if (name == MLA) {
-		//Rn
 		registers = tokens[4];
 		num = registers[1] - '0';
 		if (registers[2] != '\0') {
 			num = (num * 10) + (registers[2] - '0');
 		}
 		code += (num << 12);
-		//code = 0x9MNS2De0 or 0x9MNS0De0
-        }
+  }
 
 	return code;
 }
