@@ -332,7 +332,7 @@ void run_lesson(keyboard_t *keyboard) {
   lesson_note(keyboard, C);
 
 }
-
+/*
 int load_menu(SDL_Renderer *renderer, SDL_Rect texr, int *running, int *w, int *h) {
 
   SDL_Texture *menu_img = NULL;
@@ -365,7 +365,7 @@ int load_menu(SDL_Renderer *renderer, SDL_Rect texr, int *running, int *w, int *
   return 1;
 
 }
-
+*/
 int init_gui(SDL_Window **window, SDL_Renderer **renderer) {
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
@@ -397,11 +397,11 @@ int main (int argc, char **argv) {
   if (!init_gui(&window, &renderer)) {
     return EXIT_FAILURE;
   }
-
+/*
   if (!load_menu(renderer, texr, &running, &w, &h)) {
     return EXIT_FAILURE;
   }
-
+*/
   init_keyboard(keyboard);
   
   piano_img = IMG_LoadTexture(renderer, IMG_PATH);
