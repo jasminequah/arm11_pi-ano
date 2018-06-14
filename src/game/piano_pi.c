@@ -7,20 +7,15 @@
 #include <wiringPi.h>
 
 #define NUM_KEYS 10
+#define SCREEN_WIDTH  1600
+#define SCREEN_HEIGHT 900
+#define IMG_PATH "graphics/piano.PNG"
+#define MENU_IMG_PATH "graphics/menu.PNG"
+
 
 typedef enum {
   C, C_SHARP, D, D_SHARP, E, F, F_SHARP, G, G_SHARP, A
 } note_t;
-
-typedef struct key {
-  note_t    note;
-  int       is_pressed;
-  Mix_Chunk *audio;
-} piano_key_t;
-
-typedef struct keyboard {
-  piano_key_t keys[NUM_KEYS];
-} keyboard_t;
 
 typedef enum {
   LedPin = 0,
@@ -41,37 +36,18 @@ typedef enum {
   blackKey4 = 12
 } wiring_keys;
 
-/* White Keys */
-#define LedPin 0 //red
-#define ButtonPin 7 
+typedef struct key {
+  note_t    note;
+  Mix_Chunk *audio;
+  wiring_keys led;
+  wiring_keys button;
+} piano_key_t;
 
-#define LedPinTwo 6 //green
-#define ButtonPinTwo 1
-
-#define LedPinThree 2 //yellow
-#define ButtonPinThree 5
-
-#define LedPinFour 4 // blue
-#define ButtonPinFour 3
-
-#define LedPinFive 11 //red
-#define ButtonPinFive 10
-
-#define LedPinSix 8 //oranges
-#define ButtonPinSix 16
-
-/* Black keys */
-#define blackKey1 14
-#define blackKey2 15
-#define blackKey3 13
-#define blackKey4 12
-
+typedef struct keyboard {
+  piano_key_t keys[NUM_KEYS];
+} keyboard_t;
 
 void play_audio(piano_key_t *key);
-
-#define SCREEN_WIDTH  1600
-#define SCREEN_HEIGHT 900
-#define IMG_PATH "graphics/temppiano.PNG"
 
 int randCol() {
   return rand() % 255 + 0;
@@ -109,92 +85,67 @@ void init_pins(void) {
 }
 
 void check_pins(keyboard_t *keyboard) {
-    if(digitalRead(ButtonPin) == 0) {
-      digitalWrite(LedPin, LOW);
-      keyboard->keys[C].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[C].button) == 0) {
+      digitalWrite(keyboard->keys[C].led, LOW);
       play_audio(&keyboard->keys[C]);
     } else {
-      digitalWrite(LedPin, HIGH);
-      keyboard->keys[C].is_pressed = 0;
+      digitalWrite(keyboard->keys[C].led, HIGH);
     }
 
-    if(digitalRead(ButtonPinTwo) == 0) {
-      digitalWrite(LedPinTwo, LOW);
-      keyboard->keys[D].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[D].button) == 0) {
+      digitalWrite(keyboard->keys[D].led, LOW);
       play_audio(&keyboard->keys[D]);
     } else {
-      digitalWrite(LedPinTwo, HIGH);
-      keyboard->keys[D].is_pressed = 0;
+      digitalWrite(keyboard->keys[D].led, HIGH);
     }
 
-    if(digitalRead(ButtonPinThree) == 0) {
-      digitalWrite(LedPinThree, LOW);
-      keyboard->keys[E].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[E].button) == 0) {
+      digitalWrite(keyboard->keys[E].led, LOW);
       play_audio(&keyboard->keys[E]);
     } else {
-      digitalWrite(LedPinThree, HIGH);
-      keyboard->keys[E].is_pressed = 0;
+      digitalWrite(keyboard->keys[E].led, HIGH);
     }
 
-    if(digitalRead(ButtonPinFour) == 0) {
-      digitalWrite(LedPinFour, LOW);
-      keyboard->keys[F].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[F].button) == 0) {
+      digitalWrite(keyboard->keys[F].led, LOW);
       play_audio(&keyboard->keys[F]);
     } else {
-      digitalWrite(LedPinFour, HIGH);
-      keyboard->keys[F].is_pressed = 0;
+      digitalWrite(keyboard->keys[F].led, HIGH);
     }
 
-    if(digitalRead(ButtonPinFive) == 0) {
-      digitalWrite(LedPinFive, LOW);
-      keyboard->keys[G].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[G].button) == 0) {
+      digitalWrite(keyboard->keys[G].led, LOW);
       play_audio(&keyboard->keys[G]);
     } else {
-      digitalWrite(LedPinFive, HIGH);
-      keyboard->keys[G].is_pressed = 0;
+      digitalWrite(keyboard->keys[G].led, HIGH);
     }
 
-    if(digitalRead(ButtonPinSix) == 0) {
-      digitalWrite(LedPinSix, LOW);
-      keyboard->keys[A].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[A].button) == 0) {
+      digitalWrite(keyboard->keys[A].led, LOW);
       play_audio(&keyboard->keys[A]);
     } else {
-      digitalWrite(LedPinSix, HIGH);
-      keyboard->keys[A].is_pressed = 0;
+      digitalWrite(keyboard->keys[A].led, HIGH);
     }
 
-    if(digitalRead(blackKey1) == 0) {
-      keyboard->keys[C_SHARP].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[C_SHARP].button) == 0) {
       play_audio(&keyboard->keys[C_SHARP]);
-    } else {
-      keyboard->keys[C_SHARP].is_pressed = 0;
     }
 
-    if (digitalRead(blackKey2) == 0) {
-      keyboard->keys[D_SHARP].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[D_SHARP].button) == 0) {
       play_audio(&keyboard->keys[D_SHARP]);
-    } else {
-      keyboard->keys[D_SHARP].is_pressed = 0;
     }
 
-    if (digitalRead(blackKey3) == 0) {
-      keyboard->keys[F_SHARP].is_pressed = 1;
+    if(digitalRead(keyboard->keys[F_SHARP].button) == 0) {
       play_audio(&keyboard->keys[F_SHARP]);
-    } else {
-      keyboard->keys[F_SHARP].is_pressed = 0;
     }
 
-    if (digitalRead(blackKey4) == 0) {
-      keyboard->keys[G_SHARP].is_pressed = 1; 
+    if(digitalRead(keyboard->keys[G_SHARP].button) == 0) {
       play_audio(&keyboard->keys[G_SHARP]);
-    } else {
-      keyboard->keys[G_SHARP].is_pressed = 0;
     }
 } 
 
 
 void init_piano_audio(piano_key_t *key) {
-  key->audio = malloc(sizeof(Mix_Chunk));
 
   switch(key->note) {
     case C:
@@ -271,15 +222,37 @@ void init_piano_audio(piano_key_t *key) {
 
 }
 
+
+void set_pi_io(keyboard_t *keyboard) {
+
+  keyboard->keys[C].button = ButtonPin;
+  keyboard->keys[C].led    = LedPin;
+  keyboard->keys[D].button = ButtonPinTwo;
+  keyboard->keys[D].led    = LedPinTwo;
+  keyboard->keys[E].button = ButtonPinThree;
+  keyboard->keys[E].led    = LedPinThree;
+  keyboard->keys[F].button = ButtonPinFour;
+  keyboard->keys[F].led    = LedPinFour;
+  keyboard->keys[G].button = ButtonPinFive;
+  keyboard->keys[G].led    = LedPinFive;
+  keyboard->keys[A].button = ButtonPinSix;
+  keyboard->keys[A].led    = LedPinSix;
+  keyboard->keys[C_SHARP].button = blackKey1;
+  keyboard->keys[D_SHARP].button = blackKey2;
+  keyboard->keys[F_SHARP].button = blackKey3;
+  keyboard->keys[G_SHARP].button = blackKey4;
+
+}
+
 void init_keyboard(keyboard_t *keyboard) {
 
   for (int i = 0; i < NUM_KEYS; i++) {
-    piano_key_t *key = malloc(sizeof(piano_key_t));
-    key->note = (note_t) i;
-    key->is_pressed = 0;
-    init_piano_audio(key);
-    keyboard->keys[i] = *key;
+    piano_key_t key;
+    key.note = (note_t) i;
+    init_piano_audio(&key);
+    keyboard->keys[i] = key;
   }
+  set_pi_io(keyboard);
 }
 
 
@@ -298,10 +271,10 @@ void play_audio(piano_key_t *key) {
 
 int init_audio(void) {
 
-  int audio_rate = 22050;
+  int audio_rate = 44100;
   Uint16 audio_format = AUDIO_S16SYS; // Bitrate of WAV faile
   int audio_channels = 1;  // 2 for stereo, 1 for mono
-  int audio_buffers = 4096;
+  int audio_buffers = 1024;
 
   if (Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) != 0) {
     return 1;
@@ -315,59 +288,141 @@ void free_all(keyboard_t *keyboard) {
 
   for (int i = 0; i < NUM_KEYS; i++) {
     Mix_FreeChunk(keyboard->keys[i].audio);
-    free(&keyboard->keys[i]);
   }
   free(keyboard);
 
 }
 
+void lesson_note(keyboard_t *keyboard, note_t note) {
+  while(digitalRead(keyboard->keys[note].button)) {
+    digitalWrite(keyboard->keys[note].led, LOW);
+  }
+  play_audio(&keyboard->keys[note]);
+  digitalWrite(keyboard->keys[note].led, HIGH);
+  while(Mix_Playing(0) != 0);
+}
 
-int main (int argc, char **argv) {
-  SDL_Window *window = NULL; // main window
-  SDL_Texture *pianoImg = NULL;
-  SDL_Renderer* renderer = NULL;
-  int w, h;
-  keyboard_t *keyboard = malloc(sizeof(keyboard_t));
+void run_lesson(keyboard_t *keyboard) {
 
-  //srand(time(NULL)); 
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, C);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, G);
+  lesson_note(keyboard, G);
+
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, C);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, E);
+  lesson_note(keyboard, D);
+  lesson_note(keyboard, C);
+
+}
+
+int load_menu(SDL_Renderer *renderer, SDL_Rect texr, int *running, int *w, int *h) {
+
+  SDL_Texture *menu_img = NULL;
+  SDL_Event event;
+
+  menu_img = IMG_LoadTexture(renderer, MENU_IMG_PATH);
+  if (menu_img == NULL) {
+    printf("Error: failed to load menu image.\n");
+    return 0;
+  }
+
+  SDL_QueryTexture(menu_img, NULL, NULL, w, h);
+  texr.x = SCREEN_WIDTH / 2;
+  texr.y = SCREEN_HEIGHT / 2;
+  texr.w = *w;
+  texr.h = *h;
+
+  SDL_RenderCopy(renderer, menu_img, NULL, &texr);
+  SDL_RenderPresent(renderer);
+
+  SDL_WaitEvent(&event);
+  while (event.type != SDL_KEYDOWN) {
+    SDL_WaitEvent(&event);
+  }
+  const char *key = SDL_GetKeyName(event.key.keysym.sym);
+  if (strcmp(key, "Q") == 0 || strcmp(key, "q") == 0) {
+    //quit
+    running = 0;
+  }
+  return 1;
+
+}
+
+int init_gui(SDL_Window **window, SDL_Renderer **renderer) {
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
     printf("Error: failed to initialise SDL.\n");
-    return EXIT_FAILURE;
+    return 0;
   }
 
   if (init_audio()) {
     printf("Error: failed to initialise audio: %s\n", Mix_GetError());
+    return 0;
+  }
+  
+  *window   = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+  *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  return 1;
+
+}
+
+int main (int argc, char **argv) {
+  SDL_Window *window = NULL; // main window
+  SDL_Texture *piano_img = NULL;
+  SDL_Renderer *renderer = NULL;
+  SDL_Rect texr;
+  int w, h;
+  keyboard_t *keyboard = malloc(sizeof(keyboard_t));
+  int running = 1;
+
+  //srand(time(NULL)); 
+  if (!init_gui(&window, &renderer)) {
+    return EXIT_FAILURE;
+  }
+
+  if (!load_menu(renderer, texr, &running, &w, &h)) {
     return EXIT_FAILURE;
   }
 
   init_keyboard(keyboard);
   
-  window = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-  pianoImg = IMG_LoadTexture(renderer, IMG_PATH);
-  if (pianoImg == NULL) {
-    printf("img is null\n");
+  piano_img = IMG_LoadTexture(renderer, IMG_PATH);
+  if (piano_img == NULL) {
+    printf("Error: failed to load piano image.\n");
   }  
 
-  SDL_QueryTexture(pianoImg, NULL, NULL, &w, &h);
+  SDL_QueryTexture(piano_img, NULL, NULL, &w, &h);
 
-  SDL_Rect texr;
   texr.x = SCREEN_WIDTH / 2 - w / 2;
   texr.y = SCREEN_HEIGHT / 2 - h / 2;
   texr.w = w;
   texr.h = h;
 
-
   SDL_SetRenderDrawColor(renderer, randCol(), randCol(), randCol(), 255);
 
-  int running = 1;
 //  uint32_t old_time = 0, change_color_time = 1000, new_time;
 
-
   if (wiringPiSetup() == -1) {
-    printf("Setup wiringPi failed\n");
-    return 1;
+    printf("Error: setup wiringPi failed\n");
+    return EXIT_FAILURE;
   }
 
   while (running) {
@@ -377,14 +432,17 @@ int main (int argc, char **argv) {
         const char *key = SDL_GetKeyName(event.key.keysym.sym);
         if (strcmp(key,"Q") == 0 || strcmp(key, "q") == 0) {
           running = 0;
-        }
+        } else if (strcmp(key, "L") == 0 || strcmp(key, "l") == 0) {
+	  run_lesson(keyboard);
+	  break;
+	}
       }
     }
    
     check_pins(keyboard);
     
     SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, pianoImg, NULL, &texr);
+    SDL_RenderCopy(renderer, piano_img, NULL, &texr);
     SDL_RenderPresent(renderer);  
 
     /*new_time = SDL_GetTicks();
@@ -395,9 +453,10 @@ int main (int argc, char **argv) {
 
   }
 
+  while(Mix_Playing(0) != 0);
   free_all(keyboard); 
   Mix_CloseAudio();
-  SDL_DestroyTexture(pianoImg);
+  SDL_DestroyTexture(piano_img);
   SDL_DestroyRenderer(renderer); 
   SDL_DestroyWindow(window);
   SDL_Quit();

@@ -6,6 +6,10 @@
 #include <stdio.h>
 
 #define NUM_KEYS 10
+#define SCREEN_WIDTH  1600
+#define SCREEN_HEIGHT 900
+#define PIANO_IMG_PATH "graphics/piano.PNG"
+#define MENU_IMG_PATH "graphics/menu.PNG"
 
 typedef enum {
   C, C_SHARP, D, D_SHARP, E, F, F_SHARP, G, G_SHARP, A
@@ -21,16 +25,12 @@ typedef struct keyboard {
   piano_key_t keys[NUM_KEYS];
 } keyboard_t;
 
-#define SCREEN_WIDTH  1600
-#define SCREEN_HEIGHT 900
-#define IMG_PATH "graphics/temppiano.PNG"
-
 int randCol() {
   return rand() % 255 + 0;
 }
 
 void init_piano_audio(piano_key_t *key) {
-  key->audio = malloc(sizeof(Mix_Chunk));
+  key->audio = NULL;
 
   switch(key->note) {
     case C:
@@ -108,13 +108,12 @@ void init_piano_audio(piano_key_t *key) {
 }
 
 void init_keyboard(keyboard_t *keyboard) {
-
+  
   for (int i = 0; i < NUM_KEYS; i++) {
-    piano_key_t *key = malloc(sizeof(piano_key_t));
-    key->note = (note_t) i;
-    key->is_pressed = 0;
-    init_piano_audio(key);
-    keyboard->keys[i] = *key;
+    piano_key_t key;
+    key.note = (note_t) i;
+    init_piano_audio(&key);
+    keyboard->keys[i] = key;
   }
 }
 
@@ -219,24 +218,87 @@ void free_all(keyboard_t *keyboard) {
 
   for (int i = 0; i < NUM_KEYS; i++) {
     Mix_FreeChunk(keyboard->keys[i].audio);
-    free(&keyboard->keys[i]);
   }
   free(keyboard);
 }
 
+int load_menu(SDL_Renderer *renderer, SDL_Rect texr, int *running, int *w, int *h) {
+
+  SDL_Texture *menu_img = NULL;
+  SDL_Event event;
+
+  menu_img = IMG_LoadTexture(renderer, MENU_IMG_PATH);
+  if (menu_img == NULL) {
+    printf("Failed to load menu image.\n");
+    return 0;
+  }
+
+  SDL_QueryTexture(menu_img, NULL, NULL, w, h);
+  texr.x = SCREEN_WIDTH / 2;
+  texr.y = SCREEN_HEIGHT / 2;
+  texr.w = *w;
+  texr.h = *h;
+
+  SDL_RenderCopy(renderer, menu_img, NULL, &texr);
+  SDL_RenderPresent(renderer);
+
+  SDL_WaitEvent(&event);
+  while (event.type != SDL_KEYDOWN) {
+    SDL_WaitEvent(&event);
+  }
+  const char *key = SDL_GetKeyName(event.key.keysym.sym);
+  if (strcmp(key, "Q") == 0 || strcmp(key, "q") == 0) {
+    //quit
+    running = 0;
+  }
+  return 1;
+
+}
+
+int init_gui(SDL_Window **window, SDL_Renderer **renderer) {
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+    printf("Error: failed to initialise SDL.\n");
+    return 0;
+  }
+
+  if (init_audio()) {
+    printf("Error: failed to initialise audio: %s\n", Mix_GetError());
+    return 0;
+  }
+
+  *window   = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+  *renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  return 1;
+
+}
 
 int main (int argc, char **argv) {
-  SDL_Window *window = NULL; // main window
-  SDL_Texture *pianoImg = NULL;
+  SDL_Window *window     = NULL; // main window
+  SDL_Texture *piano_img  = NULL;
   SDL_Renderer* renderer = NULL;
+  SDL_Rect texr;
+  SDL_Event event;
   int w, h;
   keyboard_t *keyboard = malloc(sizeof(keyboard_t));
+  int running = 1;
 
   //srand(time(NULL)); 
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
-    printf("Error: failed to initialise SDL.\n");
+
+  if (!init_gui(&window, &renderer)) {
     return EXIT_FAILURE;
   }
+
+  if (!load_menu(renderer, texr, &running, &w, &h)) {
+    return EXIT_FAILURE;
+  }
+
+  init_keyboard(keyboard);
+
+  piano_img = IMG_LoadTexture(renderer, PIANO_IMG_PATH);
+  if (piano_img == NULL) {
+    printf("Failed to load piano image.\n");
+  }  
 
   if (init_audio()) {
     printf("Error: failed to initialise audio: %s\n", Mix_GetError());
@@ -244,30 +306,20 @@ int main (int argc, char **argv) {
   }
 
   init_keyboard(keyboard);
-  window = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-  pianoImg = IMG_LoadTexture(renderer, IMG_PATH);
-  if (pianoImg == NULL) {
-    printf("img is null\n");
-  }  
+  SDL_QueryTexture(piano_img, NULL, NULL, &w, &h);
 
-  SDL_QueryTexture(pianoImg, NULL, NULL, &w, &h);
-
-  SDL_Rect texr;
-  texr.x = SCREEN_WIDTH / 2 - w / 2;
-  texr.y = SCREEN_HEIGHT / 2 - h / 2;
-  texr.w = w;
-  texr.h = h;
+  texr.x = SCREEN_WIDTH / 2 - (w * 0.6 )/ 2;
+  texr.y = SCREEN_HEIGHT / 2 - (h * 0.6)/ 2;
+  texr.w = w * 0.6;
+  texr.h = h * 0.6;
 
 
   SDL_SetRenderDrawColor(renderer, randCol(), randCol(), randCol(), 255);
 
-  int running = 1;
 //  uint32_t old_time = 0, change_color_time = 1000, new_time;
 
   while (running) {
-    SDL_Event event;
     if (SDL_PollEvent(&event)) {
       if (event.type == SDL_KEYDOWN || event.type == SDL_QUIT) {
         const char *key = SDL_GetKeyName(event.key.keysym.sym);
@@ -280,7 +332,7 @@ int main (int argc, char **argv) {
     }
    
     SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, pianoImg, NULL, &texr);
+    SDL_RenderCopy(renderer, piano_img, NULL, &texr);
     SDL_RenderPresent(renderer);   
 
     /*new_time = SDL_GetTicks();
@@ -291,9 +343,10 @@ int main (int argc, char **argv) {
 
   }
 
+  while(Mix_Playing(0) != 0);
   free_all(keyboard); //need to free sound, keys, keyboard, etc.  
   Mix_CloseAudio();
-  SDL_DestroyTexture(pianoImg);
+  SDL_DestroyTexture(piano_img);
   SDL_DestroyRenderer(renderer); 
   SDL_DestroyWindow(window);
   SDL_Quit();
