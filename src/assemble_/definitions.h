@@ -57,7 +57,7 @@ typedef struct state {
 	map_t *symbolTable;
 	int numOfInstr;
 	uint32_t currAddress;
-	int numOfConstants; //num of constants stored at end of file, so we know where to write next constant
+	int numOfConstants;
 } state_t;
 
 #endif

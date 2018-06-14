@@ -4,14 +4,13 @@
 #include <stdio.h>
 #include <assert.h>
 #include "definitions.h"
+#include "ioutils.h"
 
 uint32_t getOperand(char *expression) {
   char *endPtr;
   if (strncmp("0x", expression, 2) == 0) {
-    // Numeric constant in hexadecimal
     return strtol(expression + 2 * (sizeof(char)), &endPtr, HEX_BASE);
   } else {
-    // Numeric constant in decimal
     return strtol(expression, &endPtr, DECIMAL_BASE);
   }
 }
@@ -81,10 +80,8 @@ void setReg(dataProcType_t instrType, char **tokens, uint32_t *instrPtr, int num
       rn = atoi(&tokens[2][1]);
 
       if (numTokens == 4) {
-        // Expression
         getExprBits(instrPtr, tokens[3]);
       } else {
-        // Shifted register
         getShiftBits(instrPtr, &tokens[3]);
       }
 
@@ -158,15 +155,6 @@ uint32_t getMemAddress(map_t *symbolTable, char *label) {
   return currMap->memAddress;
 }
 
-/* First Pass: Makes symbol table-
-        1)Associate each label(string) with a memory address(integer)
-	 Second Pass:
-	      1) Read OpCode mnemonic
-				2) Read operand fields
-				3) Replace label with corresponding references
-				4) Generate binary encoding of instruction
-*/
-
 map_t newMap(char *label, uint16_t memAddress) {
   char *labelOnHeap = malloc(511);
   strcpy(labelOnHeap, label);
@@ -187,4 +175,94 @@ state_t* newState(int numOfInstructions, map_t *symbolTable) {
   newState->binaryInstructions = binaryInstructions;
 
   return newState;
+}
+
+instrName_t toInstrName(char* instrString) {
+  static char const *instr_str[] = {"add", "sub", "rsb", "and", "eor", "orr", "mov",
+                                    "tst", "teq", "cmp", "mul", "mla", "ldr", "str",
+                                    "beq", "bne", "bge", "blt", "bgt", "ble", "b",
+                                    "lsl", "andeq"};
+  for (int i = 0; i < 23; i++) {
+    if(!strcmp(instr_str[i], instrString)) {
+      return i;
+    }
+  }
+  perror("instrName not found");
+  return -1;
+}
+
+void parse(state_t *state, char **tokens, instrName_t instruction, int num_tokens) {
+  uint32_t currAddress = state->currAddress;
+
+  switch (instruction) {
+    case ADD :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, ADD, num_tokens);
+      break;
+    case SUB :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, SUB, num_tokens);
+      break;
+    case RSB :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, RSB, num_tokens);
+      break;
+    case AND :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, AND, num_tokens);
+      break;
+    case EOR :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, EOR, num_tokens);
+      break;
+    case ORR :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, ORR, num_tokens);
+      break;
+    case MOV :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, MOV, num_tokens);
+      break;
+    case TST :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, TST, num_tokens);
+      break;
+    case TEQ :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, TEQ, num_tokens);
+      break;
+    case CMP :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, CMP, num_tokens);
+      break;
+    case MUL :
+      state->binaryInstructions[currAddress] = parseMultiply(state->symbolTable, tokens, MUL);
+      break;
+    case MLA :
+      state->binaryInstructions[currAddress] = parseMultiply(state->symbolTable, tokens, MLA);
+      break;
+    case LDR :
+      state->binaryInstructions[currAddress] = parseSDT(state, tokens, LDR, num_tokens);
+      break;
+    case STR :
+      state->binaryInstructions[currAddress] = parseSDT(state, tokens, STR, num_tokens);
+      break;
+    case LSL :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, LSL, num_tokens);
+      break;
+    case ANDEQ :
+      state->binaryInstructions[currAddress] = parseDataProcessing(state->symbolTable, tokens, ANDEQ, num_tokens);
+      break;
+    case BEQ :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BEQ, currAddress * 4);
+      break;
+    case BNE :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BNE, currAddress * 4);
+      break;
+    case BGE :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BGE, currAddress * 4);
+      break;
+    case BLT :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BLT, currAddress * 4);
+      break;
+    case BGT :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BGT, currAddress * 4);
+      break;
+    case BLE :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, BLE, currAddress * 4);
+      break;
+    case B :
+      state->binaryInstructions[currAddress] = parseBranch(state->symbolTable, tokens, B, currAddress * 4);
+      break;
+  }
 }
