@@ -18,7 +18,7 @@ int checkSubCarryOut(uint32_t a, uint32_t b);
 uint32_t loadMemory(uint8_t *memory, uint32_t memLoc);
 void storeMemory(state_t *state, uint32_t memLoc);
 uint32_t barrelShifter(uint32_t value, int shiftAmount, int *carryOut, shiftType_t shiftType);
-
+int checkGPIOPins(uint32_t newBase);
 int checkCond(state_t *state, cond_t cond);
 
 uint32_t getInstruction(state_t *state);

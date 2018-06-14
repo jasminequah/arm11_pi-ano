@@ -54,6 +54,25 @@ void storeMemory(state_t *state, uint32_t memLoc) {
   state->memory[memLoc]     = (state->registers[decoded->rd] << 24) >> 24;
 }
 
+
+int checkGPIOPins(uint32_t newBase) {
+  if (newBase == PIN_20_TO_29) {
+    printf("One GPIO pin from 20 to 29 has been accessed\n");
+  } else if (newBase == PIN_10_TO_19) {
+    printf("One GPIO pin from 10 to 19 has been accessed\n");
+  } else if (newBase == PIN_0_TO_9) {
+    printf ("One GPIO pin from 0 to 9 has been accessed\n");
+  } else if (newBase == PIN_OFF) {
+    printf("PIN OFF\n");
+  } else if (newBase == PIN_ON) {
+    printf("PIN ON\n");
+  } else {
+    printf("Error: Out of bounds memory access at address 0x%08x\n", newBase);
+    return 0;
+  }
+  return 1;
+}
+
 uint32_t barrelShifter(uint32_t value, int shiftAmount, int *carryOut, shiftType_t shiftType) {
   uint32_t result = 0;
   switch(shiftType) {
