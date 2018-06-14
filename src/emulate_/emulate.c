@@ -6,6 +6,7 @@
 #include "utilities.h"
 #include "ioutils.h"
 
+typedef void (*func)();
 
 void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->pipeline->decoded;
@@ -154,11 +155,7 @@ void executeSDT(state_t *state) {
   uint32_t* registers      = state->registers;
   uint8_t* memory          = state->memory;
   uint32_t baseRegContents = registers[decoded->rn];
-  //
-  // if (decoded->rn == PC_REG) {
-  //   baseRegContents += 0x8;
-  // }
-
+  
   uint32_t offset = registers[(decoded->offset) & FIRST_4_BITS];
   if (decoded->isI) {
     int bit4 = (decoded->offset) & BIT_4;
@@ -236,79 +233,59 @@ void execute(state_t *state) {
   //printf("Instruction number: %u\n", instruction);
   //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->pipeline->decoded->cond)) {
-    switch (state->instruction) {
-      case DATA_PROCESSING:
-	executeDataProcessing(state);
-	break;
-
-      case MULTIPLY:
-	executeMultiply(state);
-        break;
-
-      case SINGLE_DATA_TRANSFER:
-	executeSDT(state);
-	break;
-
-      case BRANCH:
-	executeBranch(state);
-        break;
-    }
+    func executePointers[] = {executeDataProcessing, executeMultiply, executeSDT, executeBranch};
+    executePointers[state->instruction](state);
   }
 }
+
+void decodeBranch(pipeline_t *pipeline, uint32_t instruction) {
+  pipeline->decoded->offset   = ((int) (instruction << 8)) >> 6;
+  pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;   
+} 
+
+void decodeDataProcessing(pipeline_t *pipeline, uint32_t instruction) {
+  pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+  pipeline->decoded->isI      = instruction & IS_I;
+  pipeline->decoded->isS      = instruction & IS_S;
+  pipeline->decoded->opCode   = (opCode_t) ((instruction << 7) >> (BITS_IN_WORD - 4));
+  pipeline->decoded->rn       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->rd       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->rm       = (instruction << RM_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->operand2 = (uint16_t)instruction;
+}
+
+void decodeSDT(pipeline_t *pipeline, uint32_t instruction) {
+  pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+  pipeline->decoded->isI      = instruction & IS_I;
+  pipeline->decoded->isP      = instruction & IS_P;
+  pipeline->decoded->isU      = instruction & IS_U;
+  pipeline->decoded->isL      = instruction & IS_L;
+  pipeline->decoded->rn       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->rd       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->offset   = (instruction << OFFSET_SHIFT) >> OFFSET_SHIFT;
+}
+
+void decodeMultiply(pipeline_t *pipeline, uint32_t instruction) {
+  pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+  pipeline->decoded->isA      = instruction & IS_A;
+  pipeline->decoded->isS      = instruction & IS_S;
+  pipeline->decoded->rd       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->rn       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->rs       = (instruction << RS_SHIFT) >> (BITS_IN_WORD - 4);
+  pipeline->decoded->rm       = (instruction << RM_SHIFT) >> (BITS_IN_WORD - 4);
+}
+
 
 void decode(state_t *state) {
   uint32_t instruction = state->pipeline->fetched;
   pipeline_t *pipeline = state->pipeline;
   if (!(instruction)) {
     state->isTerminated       = 1;
-    // state->registers[PC_REG] += 0x4u;
   } else {
     instr_t instrNum = getInstructionNum(instruction);
-    switch (instrNum) {
-      case BRANCH:
-        pipeline->decoded->offset   = ((int) (instruction << 8)) >> 6;
-        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
-        // execute(state, BRANCH);
-        state->instruction = BRANCH;
-        break;
-      case DATA_PROCESSING:
-        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
-        pipeline->decoded->isI      = instruction & IS_I;
-        pipeline->decoded->isS      = instruction & IS_S;
-        pipeline->decoded->opCode   = (opCode_t) ((instruction << 7) >> (BITS_IN_WORD - 4));
-        pipeline->decoded->rn       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->rd       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->rm       = (instruction << RM_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->operand2 = (uint16_t)instruction;
-        // execute(state, DATA_PROCESSING);
-        state->instruction = DATA_PROCESSING;
-        break;
-      case SINGLE_DATA_TRANSFER:
-        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
-        pipeline->decoded->isI      = instruction & IS_I;
-        pipeline->decoded->isP      = instruction & IS_P;
-        pipeline->decoded->isU      = instruction & IS_U;
-        pipeline->decoded->isL      = instruction & IS_L;
-        pipeline->decoded->rn       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->rd       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->offset   = (instruction << OFFSET_SHIFT) >> OFFSET_SHIFT;
-        // execute(state, SINGLE_DATA_TRANSFER);
-        state->instruction = SINGLE_DATA_TRANSFER;
-        break;
-      case MULTIPLY:
-      /*The positions of rd and rn are interchanged in Multiply,
-      hence the shift numbers are interchanged*/
-        pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
-        pipeline->decoded->isA      = instruction & IS_A;
-        pipeline->decoded->isS      = instruction & IS_S;
-        pipeline->decoded->rd       = (instruction << RN_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->rn       = (instruction << RD_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->rs       = (instruction << RS_SHIFT) >> (BITS_IN_WORD - 4);
-        pipeline->decoded->rm       = (instruction << RM_SHIFT) >> (BITS_IN_WORD - 4);
-        // execute(state, MULTIPLY);
-        state->instruction = MULTIPLY;
-        break;
-    }
+    func decodePointers[] = {decodeDataProcessing, decodeMultiply, decodeSDT, decodeBranch};
+    decodePointers[instrNum](pipeline, instruction);
+    state->instruction = instrNum;
   }
   state->isDecoded = 1;
 }
