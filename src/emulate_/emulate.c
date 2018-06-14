@@ -6,8 +6,6 @@
 #include "utilities.h"
 #include "ioutils.h"
 
-typedef void (*func)();
-
 void executeDataProcessing(state_t *state) {
   decoded_t *decoded = state->pipeline->decoded;
   uint32_t *registers = state->registers;
@@ -230,8 +228,6 @@ void executeBranch(state_t *state) {
  * If reaches n all 0 instruction, then emulator terminates (halt) and prints registers and memory */
 
 void execute(state_t *state) {
-  //printf("Instruction number: %u\n", instruction);
-  //If cond not satisfied may still want to check if all 0 instruction encountered?
   if (checkCond(state, state->pipeline->decoded->cond)) {
     func executePointers[] = {executeDataProcessing, executeMultiply, executeSDT, executeBranch};
     executePointers[state->instruction](state);
@@ -292,7 +288,6 @@ void decode(state_t *state) {
 
 void fetch(state_t *state) {
   if (state->registers[PC_REG] > MEMORY_SIZE) {
-    // state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
     fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
   }
   state->pipeline->fetched = getInstruction(state);
@@ -317,15 +312,6 @@ int main(int argc, char* argv[]) {
 
   /* Fetch: increments PC and passes state to decode part of pipeline */
   while (!state->isTerminated) {
-    // if (state->registers[PC_REG] > MEMORY_SIZE) {
-    //   state->registers[PC_REG] = state->registers[PC_REG] % MEMORY_SIZE;
-    //   fprintf(stderr, "Error: Out of bounds memory access at address 0x%08x\n", state->registers[PC_REG]);
-    //   return EXIT_FAILURE;
-    // } else {
-    //   decode(state);
-    // }
-    //
-    // state->registers[PC_REG] += PC_INCREMENT;
     if (state->isDecoded) {
       execute(state);
     }

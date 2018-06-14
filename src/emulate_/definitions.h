@@ -54,6 +54,9 @@
 #define PIN_10_TO_19 0x20200004u
 #define PIN_20_TO_29 0x20200008u
 
+/*Function pointers */
+typedef void (*func)();
+
 /* Instructions */
 typedef enum {
   DATA_PROCESSING,
