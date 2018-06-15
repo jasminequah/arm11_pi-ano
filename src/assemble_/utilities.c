@@ -191,6 +191,14 @@ instrName_t toInstrName(char* instrString) {
   return -1;
 }
 
+int getMulNum(char* registers){
+  int num = registers[1] - '0';
+	if (registers[2] != '\0') {
+		num = (num * 10) + (registers[2] - '0');
+	}
+  return num;
+}
+
 void parse(state_t *state, char **tokens, instrName_t instruction, int num_tokens) {
   uint32_t currAddress = state->currAddress;
 

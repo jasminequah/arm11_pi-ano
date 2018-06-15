@@ -22,6 +22,7 @@ uint32_t getMemAddress(map_t *symbolTable, char *label);
 map_t newMap(char *label, uint16_t memAddress);
 state_t* newState(int numOfInstructions, map_t *symbolTable);
 instrName_t toInstrName(char* instrString);
+int getMulNum(char* registers);
 void parse(state_t *state, char **tokens, instrName_t instruction, int num_tokens);
 
 #endif

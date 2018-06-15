@@ -155,45 +155,32 @@ uint32_t parseSDT(state_t* state, char **tokens, instrName_t name, int numTokens
 }
 
 uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
-	uint32_t code = 0xe0 << 24;
+	uint32_t code = ALWAYS_COND_CODE;
 
 	char* registers;
 	int num;
-	if (name == MUL) {
-		code += (0x0 << 20);
-	}
-	else {
-		code += (0x2 << 20);
+  if (name == MLA) {
+		code += (MLA_A_BIT << A_BIT_SHIFT);
 	}
 
+  /*In Multiply, RD and RN are interchanged, so the RN_SHIFT shifts
+                                                    for RD and vice versa*/
 	registers = tokens[1];
-	num = registers[1] - '0';
-	if (registers[2] != '\0') {
-		num = (num * 10) + (registers[2] - '0');
-	}
-	code += (num << 16);
+	num = getMulNum(registers);
+	code += (num << RN_SHIFT);
 
 	registers = tokens[2];
-	num = registers[1] - '0';
-	if (registers[2] != '\0') {
-		num = (num * 10) + (registers[2] - '0');
-	}
-	code += ((0x9 << 4) + num);
+	num = getMulNum(registers);
+	code += (MUL_BITS_SEVEN + num);
 
 	registers = tokens[3];
-	num = registers[1] - '0';
-	if (registers[2] != '\0') {
-		num = (num * 10) + (registers[2] - '0');
-	}
-	code += (num << 8);
+	num = getMulNum(registers);
+	code += (num << RS_SHIFT);
 
 	if (name == MLA) {
 		registers = tokens[4];
-		num = registers[1] - '0';
-		if (registers[2] != '\0') {
-			num = (num * 10) + (registers[2] - '0');
-		}
-		code += (num << 12);
+		num = getMulNum(registers);
+		code += (num << RD_SHIFT);
   }
 
 	return code;

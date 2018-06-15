@@ -37,6 +37,9 @@
 #define LOWER_24_BIT_MASK    0x00ffffff
 #define COND_OFFSET          28
 #define BRANCH_MASK          0x0a000000
+#define A_BIT_SHIFT          20
+#define MLA_A_BIT            0x2
+#define MUL_BITS_SEVEN       (0x9 << 4)
 
 typedef struct map {
   char *label;
