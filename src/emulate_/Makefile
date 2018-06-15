@@ -3,7 +3,7 @@ CFLAGS  = -Wall -g -D_POSIX_SOURCE -D_BSD_SOURCE -std=c99 -Werror -pedantic
 
 .SUFFIXES: .c .o
 
-emulate: emulate.o utilities.o ioutils.o
+all: emulate.o utilities.o ioutils.o
 	$(CC) emulate.o utilities.o ioutils.o -o ../emulate
 
 emulate.o: emulate.c definitions.h utilities.h
