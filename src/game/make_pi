@@ -1,0 +1,20 @@
+CFLAGS  = -Wall -pedantic -Werror
+LDFLAGS = `sdl2-config --libs` -lSDL2 -lSDL2_image -lSDL2_mixer
+CC      = gcc
+
+.SUFFIXES: .c .o
+
+all: piano_pi.o piano_utils.o pi_utils.o
+	$(CC) $(CFLAGS) piano_pi.o piano_utils.o pi_utils.o -o piano_pi $(LDFLAGS) -lwiringPi
+
+piano_pi.o:
+	$(CC) $(CFLAGS) piano_pi.c -c -o piano_pi.o $(LDFLAGS) -lwiringPi
+
+piano_utils.o: piano_utils.c
+	$(CC) $(CFLAGS) piano_utils.c -c -o piano_utils.o $(LDFLAGS)
+
+pi_utils.o: pi_utils.c
+	$(CC) $(CFLAGS) pi_utils.c -c -o pi_utils.o $(LDFLAGS) -lwiringPi
+
+clean:
+	rm -rf *.o piano_pi
