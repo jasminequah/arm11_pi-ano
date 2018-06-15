@@ -56,11 +56,11 @@ typedef enum {
 } dataProcType_t;
 
 typedef struct state {
-	uint32_t *binaryInstructions;
-	map_t *symbolTable;
-	int numOfInstr;
-	uint32_t currAddress;
-	int numOfConstants;
+  uint32_t *binaryInstructions;
+  map_t *symbolTable;
+  int numOfInstr;
+  uint32_t currAddress;
+  int numOfConstants;
 } state_t;
 
 #endif
