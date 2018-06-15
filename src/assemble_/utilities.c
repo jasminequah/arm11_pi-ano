@@ -1,9 +1,3 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
-#include "definitions.h"
 #include "ioutils.h"
 
 uint32_t getOperand(char *expression) {

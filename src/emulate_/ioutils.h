@@ -3,9 +3,6 @@
 
 #include "definitions.h"
 #include <stdio.h>
-#include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
 
 void printState(state_t *state);
 void printDecoded(decoded_t *decoded);

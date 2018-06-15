@@ -1,11 +1,7 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
-#include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
 
 #define MAX_MAPS              10
 #define MAX_INSTR_LEN         511

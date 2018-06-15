@@ -25,5 +25,6 @@ uint32_t getInstruction(state_t *state);
 instr_t getInstructionNum(uint32_t pc);
 
 state_t *newState(void);
+void freeState(state_t *state);
 
 #endif

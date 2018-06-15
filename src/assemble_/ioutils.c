@@ -1,19 +1,15 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
 #include "definitions.h"
 #include "utilities.h"
 #include "parse.h"
 
-/* First Pass: Makes symbol table-
-        1)Associate each label(string) with a memory address(integer)
+/* First Pass: Makes symbol table
+  1)Associate each label(string) with a memory address(integer)
+
    Second Pass:
-        1) Read OpCode mnemonic
-	2) Read operand fields
-	3) Replace label with corresponding references
-	4) Generate binary encoding of instruction
+  1) Read OpCode mnemonic
+  2) Read operand fields
+  3) Replace label with corresponding references
+  4) Generate binary encoding of instruction
 */
 
 int firstPass(char* fileName, map_t *symbolTable) {
@@ -50,8 +46,8 @@ int firstPass(char* fileName, map_t *symbolTable) {
   return numOfInstr;
 }
 
-/* 
-   pass 2: decode all instructions using opcode mneomonic into binary and 
+/*
+   pass 2: decode all instructions using opcode mneomonic into binary and
            replace label references with corresponding address from symbol
            table.
 */
