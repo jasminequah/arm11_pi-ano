@@ -112,11 +112,11 @@ void setReg(dataProcType_t instrType, char **tokens, uint32_t *instrPtr, int num
 }
 
 uint32_t evalExpression(char* expr) {
-   if (expr[0] == '0' && expr[1] == 'x') {
-		 return strtoul(&expr[2], NULL, 16);
-	 } else {
-		 return atoi(expr);
-	 }
+  if (expr[0] == '0' && expr[1] == 'x') {
+    return strtoul(&expr[2], NULL, 16);
+  } else {
+    return atoi(expr);
+  }
 }
 
 uint32_t getRn(char **tokens) {

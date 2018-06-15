@@ -50,9 +50,10 @@ int firstPass(char* fileName, map_t *symbolTable) {
   return numOfInstr;
 }
 
-/* pass 2: decode all instructions using opcode mneomonic into binary and
-					 replace label references with corresponding address from symbol
-					 table.
+/* 
+   pass 2: decode all instructions using opcode mneomonic into binary and 
+           replace label references with corresponding address from symbol
+           table.
 */
 
 void secondPass(char *fileName, state_t* state) {

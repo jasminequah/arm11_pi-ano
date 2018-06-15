@@ -161,8 +161,10 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
     code += (MLA_A_BIT << A_BIT_SHIFT);
   }
 
-  /*In Multiply, RD and RN are interchanged, so the RN_SHIFT shifts
-                                                    for RD and vice versa*/
+/*
+  In Multiply, RD and RN are interchanged, so the RN_SHIFT shifts
+  for RD and vice versa
+*/
   registers = tokens[1];
   num = getMulNum(registers);
   code += (num << RN_SHIFT);
@@ -185,33 +187,33 @@ uint32_t parseMultiply(map_t *symbolTable, char **tokens, instrName_t name) {
 
 uint32_t parseBranch(map_t *symbolTable, char **tokens, instrName_t name, int currAddress) {
   uint32_t cond;
-    switch(name) {
-      case BEQ:
-        cond = 0;
-        break;
-      case BNE:
-        cond = 1;
-        break;
-      case BGE:
-        cond = 10;
-        break;
-      case BLT:
-        cond = 11;
-        break;
-      case BGT:
-        cond = 12;
-        break;
-      case BLE:
-        cond = 13;
-        break;
-      case B:
-        cond = 14;
-        break;
-      default:
-        printf("Error: invalid condition\n");
-        cond = -1;
-        break;
-    }
+  switch(name) {
+    case BEQ:
+      cond = 0;
+      break;
+    case BNE:
+      cond = 1;
+      break;
+    case BGE:
+      cond = 10;
+      break;
+    case BLT:
+      cond = 11;
+      break;
+    case BGT:
+      cond = 12;
+      break;
+    case BLE:
+      cond = 13;
+      break;
+    case B:
+      cond = 14;
+      break;
+    default:
+      printf("Error: invalid condition\n");
+      cond = -1;
+      break;
+  }
   uint32_t destAddress = getMemAddress(symbolTable, tokens[1]);
   int32_t signedOffset = (((int) destAddress - currAddress) - PIPELINE_OFFSET);
   int32_t offset       = (signedOffset >> 2) & LOWER_24_BIT_MASK;
