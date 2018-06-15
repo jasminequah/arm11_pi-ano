@@ -6,20 +6,21 @@
 #include <stdio.h>
 
 #define NUM_KEYS 10
-#define SCREEN_WIDTH  1600
-#define SCREEN_HEIGHT 900
-#define PIANO_IMG_PATH "graphics/piano.PNG"
-#define MENU_IMG_PATH "graphics/menu.PNG"
-#define C_MARKER_PATH "graphics/c_marker.PNG"
-#define D_MARKER_PATH "graphics/d_marker.PNG"
-#define E_MARKER_PATH "graphics/e_marker.PNG"
-#define F_MARKER_PATH "graphics/f_marker.PNG"
-#define G_MARKER_PATH "graphics/g_marker.PNG"
-#define A_MARKER_PATH "graphics/a_marker.PNG"
-#define C_SHARP_MARKER_PATH "graphics/c_sharp_marker.PNG"
-#define D_SHARP_MARKER_PATH "graphics/d_sharp_marker.PNG"
-#define F_SHARP_MARKER_PATH "graphics/f_sharp_marker.PNG"
-#define G_SHARP_MARKER_PATH "graphics/g_sharp_marker.PNG"
+#define SCREEN_WIDTH  800
+#define SCREEN_HEIGHT 450
+#define BACKGROUND_IMG_PATH "graphics/background.png"
+#define PIANO_IMG_PATH "graphics/piano.png"
+#define MENU_IMG_PATH "graphics/menu.png"
+#define C_MARKER_PATH "graphics/c_marker.png"
+#define D_MARKER_PATH "graphics/d_marker.png"
+#define E_MARKER_PATH "graphics/e_marker.png"
+#define F_MARKER_PATH "graphics/f_marker.png"
+#define G_MARKER_PATH "graphics/g_marker.png"
+#define A_MARKER_PATH "graphics/a_marker.png"
+#define C_SHARP_MARKER_PATH "graphics/c_sharp_marker.png"
+#define D_SHARP_MARKER_PATH "graphics/d_sharp_marker.png"
+#define F_SHARP_MARKER_PATH "graphics/f_sharp_marker.png"
+#define G_SHARP_MARKER_PATH "graphics/g_sharp_marker.png"
 
 typedef enum {
   C, C_SHARP, D, D_SHARP, E, F, F_SHARP, G, G_SHARP, A
@@ -56,7 +57,7 @@ void init_piano_audio(piano_key_t *key) {
         printf("Unable to load WAV file: %s\n", Mix_GetError());
       }
       break;
-     
+
     case D:
       key->audio = Mix_LoadWAV("sound/d_note.wav");
       if (key->audio == NULL) {
@@ -118,7 +119,7 @@ void init_piano_audio(piano_key_t *key) {
 }
 
 void init_keyboard(keyboard_t *keyboard) {
-  
+
   for (int i = 0; i < NUM_KEYS; i++) {
     piano_key_t key;
     key.note = (note_t) i;
@@ -135,10 +136,12 @@ void play_audio(piano_key_t *key) {
     printf("Unable to play WAV file: %s\n", Mix_GetError());
   }
 }
-  
+
 void display_note(SDL_Renderer *renderer, note_t note) {
-  SDL_Texture *note_marker;  
+  SDL_Texture *note_marker;
   SDL_Rect texr;
+  texr.w = SCREEN_WIDTH;
+  texr.h = SCREEN_HEIGHT;
   switch(note) {
     case C:
       note_marker = IMG_LoadTexture(renderer, C_MARKER_PATH);
@@ -174,14 +177,6 @@ void display_note(SDL_Renderer *renderer, note_t note) {
   if (note_marker == NULL) {
     printf("Failed to load piano image.\n");
   }
-// May not need
-  int w, h;
-  SDL_QueryTexture(note_marker, NULL, NULL, &w, &h);
-
-  texr.x = SCREEN_WIDTH / 2 - (w * 0.6 )/ 2;
-  texr.y = SCREEN_HEIGHT / 2 - (h)/ 2 - 100;
-  texr.w = w * 0.6;
-  texr.h = h;
 
   SDL_RenderCopy(renderer, note_marker, NULL, &texr);
   SDL_RenderPresent(renderer);
@@ -275,7 +270,7 @@ int init_audio(void) {
   Uint16 audio_format = AUDIO_S16SYS; // Bitrate of WAV file
   int audio_channels = 1; // 2 for stereo, 1 for mono
   int audio_buffers = 4096;
- 
+
   if (Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) != 0) {
     return 1;
   }
@@ -294,29 +289,22 @@ void free_all(keyboard_t *keyboard) {
 
 }
 
-int load_menu(SDL_Renderer *renderer, SDL_Rect texr, int *running, int *w, int *h) {
+int load_menu(SDL_Renderer **renderer, int *running) {
 
   SDL_Texture *menu_img = NULL;
   SDL_Event event;
+  SDL_Rect texr;
+  texr.w = SCREEN_WIDTH;
+  texr.h = SCREEN_HEIGHT;
 
-  if (renderer == NULL) {
-    printf("renderer is null\n");
-  }
-
-  menu_img = IMG_LoadTexture(renderer, MENU_IMG_PATH);
+  menu_img = IMG_LoadTexture(*renderer, MENU_IMG_PATH);
   if (menu_img == NULL) {
     printf("Failed to load menu image.\n");
     return 0;
   }
 
-  SDL_QueryTexture(menu_img, NULL, NULL, w, h);
-  texr.x = SCREEN_WIDTH / 2;
-  texr.y = SCREEN_HEIGHT / 2;
-  texr.w = *w;
-  texr.h = *h;
-
-  SDL_RenderCopy(renderer, menu_img, NULL, &texr);
-  SDL_RenderPresent(renderer);
+  SDL_RenderCopy(*renderer, menu_img, NULL, &texr);
+  SDL_RenderPresent(*renderer);
 
   SDL_WaitEvent(&event);
   while (event.type != SDL_KEYDOWN) {
@@ -352,15 +340,15 @@ int init_gui(SDL_Window **window, SDL_Renderer **renderer) {
 */
 int main (int argc, char **argv) {
   SDL_Window *window     = NULL; // main window
+  SDL_Texture *background_img = NULL;
   SDL_Texture *piano_img = NULL;
   SDL_Renderer* renderer = NULL;
   SDL_Rect texr;
+  texr.w = SCREEN_WIDTH;
+  texr.h = SCREEN_HEIGHT;
   SDL_Event event;
-  int w, h;
   keyboard_t *keyboard = malloc(sizeof(keyboard_t));
   int running = 1;
-
-  //srand(time(NULL)); 
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
     printf("Error: failed to initialise SDL.\n");
@@ -375,12 +363,13 @@ int main (int argc, char **argv) {
   window   = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-/*
-  if (!init_gui(&window, &renderer)) {
-    return EXIT_FAILURE;
-  } 
-*/
-  if (!load_menu(renderer, texr, &running, &w, &h)) {
+  background_img = IMG_LoadTexture(renderer, BACKGROUND_IMG_PATH);
+  if (background_img == NULL) {
+    printf("Failed to load background image.\n");
+  }
+  SDL_RenderCopy(renderer, background_img, NULL, &texr);
+
+  if (!load_menu(&renderer, &running)) {
     return EXIT_FAILURE;
   }
 
@@ -390,18 +379,6 @@ int main (int argc, char **argv) {
   if (piano_img == NULL) {
     printf("Failed to load piano image.\n");
   }
-
-  SDL_QueryTexture(piano_img, NULL, NULL, &w, &h);
-
-  texr.x = SCREEN_WIDTH / 2 - (w * 0.6 )/ 2;
-  texr.y = SCREEN_HEIGHT / 2 - (h * 0.6)/ 2;
-  texr.w = w * 0.6;
-  texr.h = h * 0.6;
-
-  SDL_SetRenderDrawColor(renderer, randCol(), randCol(), randCol(), 255);
-
-  SDL_RenderCopy(renderer, piano_img, NULL, &texr);
-  SDL_RenderPresent(renderer);
 
   while (running) {
     if (SDL_PollEvent(&event)) {
@@ -415,24 +392,19 @@ int main (int argc, char **argv) {
       }
     }
 
-    /*new_time = SDL_GetTicks();
-    if (new_time - old_time > change_color_time) {
-      SDL_SetRenderDrawColor(renderer, randCol(), randCol(), randCol(), 255);
-      old_time = new_time;
-    } */
-
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, background_img, NULL, &texr);
     SDL_RenderCopy(renderer, piano_img, NULL, &texr);
     SDL_RenderPresent(renderer);
   }
 
   while(Mix_Playing(0) != 0);
-  free_all(keyboard); //need to free sound, keys, keyboard, etc.  
+  free_all(keyboard); //need to free sound, keys, keyboard, etc.
   Mix_CloseAudio();
+  SDL_DestroyTexture(background_img);
   SDL_DestroyTexture(piano_img);
-  SDL_DestroyRenderer(renderer); 
+  SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();
   return EXIT_SUCCESS;
 }
-
-
