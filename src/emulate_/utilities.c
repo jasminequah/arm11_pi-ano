@@ -1,4 +1,3 @@
-#include "utilities.h"
 #include "definitions.h"
 #include <stdio.h>
 #include <assert.h>
@@ -194,4 +193,14 @@ state_t *newState(void) {
   state->isTerminated = 0;
 
   return state;
+}
+
+void freeState(state_t *state) {
+
+  free(state->pipeline->decoded);
+  free(state->pipeline);
+  free(state->registers);
+  free(state->memory);
+
+  free(state);
 }

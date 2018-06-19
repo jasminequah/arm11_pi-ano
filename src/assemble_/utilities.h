@@ -1,13 +1,7 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
-#include "definitions.h"
-#include "parse.h"
+#include "ioutils.h"
 
 uint32_t getOperand(char *expression);
 uint32_t rotateLeftByTwo(uint32_t n);

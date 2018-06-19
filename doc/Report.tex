@@ -1,21 +1,223 @@
-\documentclass[11pt]{article}
 
-\usepackage{fullpage}
+\documentclass[11pt]{article} 
+\usepackage{fullpage} 
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor} % for setting colors
 
-\begin{document}
+% set the default code style
+\lstset{
+    frame=tb, % draw a frame at the top and bottom of the code block
+    tabsize=4, % tab space width
+    showstringspaces=false, % don't mark spaces in strings
+    numbers=left, % display line numbers on the left
+    basicstyle=\footnotesize\ttfamily
+}
+\usepackage[a4paper, portrait, margin=2cm]{geometry}
+\begin{document} 
+\title{Extension and Assembler} 
+\author{By: Christopher Gunadi, Jasmine Quah, Bargavi Chandramouli, Esther Wong} 
+\maketitle 
 
-\title{Our Extension...}
-\author{TODO}
+\section{Group Organisation}
 
-\maketitle
+\subsection{Splitting the work between the group}
+% Statement on how you've split the work between group members and how you are co-ordinating your work.
 
-\section{Introduction}
+For our emulator, we first had a group discussion where we all contributed ideas towards the implementation. Together, we created the initial draft of the structure of our code, so all members were aware of roughly what each functions entails and how instructions are loaded from binary files and passed through the pipeline.
 
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor
-incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-culpa qui officia deserunt mollit anim id est laborum.
+We decided to work together to design the data types required, as each of us would need to use and be familiar with these for the individual parts of the code we wrote. Next, we delegated functions for each member to complete. After we had all written our code, we came together as a group to test and debug.
+
+For our assembler, we used a similar approach and divided the functions corresponding to what each of us did in the emulator.
+
+\subsection{Co-ordinating our work}
+
+Our work is coordinated by regularly pushing onto our GitLab repository, so each of us has access to the latest version of our project, which we can \texttt{pull} and work on or \texttt{merge}.
+
+In our emulator program, we all were working on the same (master) branch and encountered numerous problems with merge conflicts and several different versions, hence unintentionally losing bits of code in the process. 
+
+Taking this experience into account, for our assembler, we decided to divide the repository into separate branches to work on our individual tasks. Once one of us completes their code, they will then merge the branch with the master. Doing so helped us divide the work more concretely, improved our project structure, made it easier to revert changes if needed and ultimately reduced the risk of merge conflicts.
+
+\subsection{Reflection on how well our group is working}
+% Discussion on how well you think the group is working and how you imagine it might need to change for the later tasks.
+
+Overall, we believe our team is working well together, led by our good communication with each other. We all feel comfortable bringing up any questions or ideas to discuss with our teammates and while debugging and testing our code, each of us checked each others' code for any problems, leading to any issues being quickly identified and rectified. By discussing each other's difficulties and debugging each other's code, we all were familiar with how each other's code works. This helped us all understand our project as a whole.
+
+Although we debugged our code as a group, in our future work, we believe it would be more beneficial to split up into pairs and divide the debugging of issues, which would be a more productive use of each of our group members' time, since it was often the case that there were too many people looking at the same code.
+
+\section{Implementation Strategies}
+% How you've structured your emulator, and what bits you think you will be able to reuse for the assembler.
+
+\subsection{Data structures, enumerated types and macros:}
+
+\begin{itemize}
+
+\item \textbf{ARM processor state} (\texttt{state\_t}): struct representing the processor's current state. It consists of an array of 32-bit unsigned integers to represent registers, an array of 8-bit unsigned integers to represent the byte-addressable memory, the pipeline (\texttt{pipeline\_t}), the fetched binary instruction, the execute instruction and integer flags indicating whether there is something fetched, decoded or if the program has terminated.
+
+\item \textbf{Pipeline} (\texttt{pipeline\_t}): struct consisting of \texttt{decoded\_t} representing the decoded instruction and a 32-bit unsigned int representing the fetched instruction.
+
+\item \textbf{Decoded instruction} (\texttt{decoded\_t}): struct consisting of the condition code, flag bits, register addresses, a 32-bit offset, opcode, and operand2, as defined in the specification. The relevant values for each instruction are set during the decode stage of the pipeline.
+
+\item \textbf{Enumerated types:} We defined a few enumerated types to improve the readability of our code and allow us to quickly access various register bits and flags. These included types for the CPSR bits, instruction numbers, condition flags, opcode and the shift type.
+
+\item \textbf{Macros:} Lastly, we included some macros to reduce repetition and the use of magic numbers, improving the readability and reusability of our code. These included the word size, memory size, number of registers, numbers of special purpose registers, as well as some masks.
+
+\end{itemize}
+
+\subsection{Structure of \texttt{emulate.c}}
+
+% TODO: write about splitting of files
+We divided the structure of the emulator into the three stages of the pipeline: fetch, decode and execute, then further subdivided the execute stage into the four possible instructions. The file structure was split to match the problem structure, and we utilised the Makefile to encode the dependencies, allowing us to automatically compile our project.
+
+\begin{itemize}
+
+\item \texttt{emulate.c}: Contains the main function, which calls the binary file loader, carries out the pipeline process, and prints out the state of the processor after all instructions have been executed.
+\item \texttt{definitions.h}: Contains definitions for structs, enumerated types, and macros.
+\item \texttt{ioutils.c}: Contains the functions needed for the binary file loader and printing the state of the processor after.
+\item \texttt{decode.c}: Contains the decode stage of the pipeline.
+\item \texttt{execute.c}: Contains the execute stage of the pipeline, with functions for the four possible types of instructions.
+\item \texttt{utilities.c}: Contains functions needed for computing the  three stages of the pipeline.
+
+\end{itemize}
+
+\subsection{Re-usability of code for \texttt{assemble.c}}
+
+Our assembler will make use of many of the same data structures, macros, masks and enumerated types implemented in the emulator, and so we will be able to reuse these. For example, we will still need to store the values of the various parts of the decoded instruction in some way before we convert the full instruction into binary, and so our \texttt{decoded\_t} struct can be reused. In anticipation of this, we have separated these into a separate file, \texttt{definitions.h}, which can be included in the files needed for the assembler to avoid unnecessary duplication of code in our project.
+
+The functions used for reading in files in \texttt{ioutils.c} could also be reused in the assembler, as our assembler still needs this functionality. For this reason, we have separated these functions from those needed in the pipeline.
+
+\subsection{Future Challenges in Implementation}
+% Discussion on implementation tasks you think you will find difficult/challenging later on,and how you are working to mitigate these.
+
+For the implementation of the assembler, we believe we may face some problems in creating the tokeniser to parse instructions, as string manipulation is required, which often has unwanted side effects in C which we will not have faced before. To mitigate these, we will be especially careful when using pointers and during the referencing/dereferencing of variables to ensure all our memory accesses are valid and do not exceed the bounds of the array.
+
+Another problem we will face in implementation is avoiding duplication of code. This occurred when writing \texttt{emulate.c}, as some functions written by two people had some similar functionality, resulting in us having to remove the duplication later on when reviewing our code. Therefore, we plan to try to identify the cases where we can outsource the code to another function beforehand by planning the structure of future parts of our project better, so that the code can be reused by the relevant functions.
+\section{Assembler} 
+
+We've implemented our assembler using several steps. Firstly, we created a struct which captured the state of the assembler. This state contained important data which was needed for parsing the assembly commands such as the total number of instructions, the current address etc. We performed the assembly using two passes over the source code. One to create a symbol table which stored labels, and the second to read the assembly operand fields and generate the corresponding binary instructions. These decoded binary instructions were stored in an array of unsigned 32-bit integers which was in the state, and so we passed this array to a binary file writer which produced the final file output for us.
+\\ 
+\\
+We have structured our assembler using several files :
+
+\begin{itemize}
+\item \texttt{assemble.c} : Contains the main function which involves allocating heap space for the symbol table and the state, and calling the functions for the first pass, second pass and writing into the output binary file.
+\item \texttt{definitions.h} : Header file that contains all the macros, structs and typedef aliases used throughout the assembler program.
+\item \texttt{ioutils.c} : Contains the input and output functions for both passes (which includes reading from the ARM source file) and the binary file writer.
+\item \texttt{utilities.c} : Contains the helper functions that aids the parsing functions in parse.c
+\item \texttt{parse.c} : Contains the functions that parses the four different types of instructions.
+\end{itemize}
+
+\section{Extension : Pi-ano} 
+\subsection{Description}
+%TODO more info on what the extension is about
+We have programmed a basic piano with 10 keys using the Raspberry Pi. The instrument can be played in one of two ways :
+\renewcommand{\theenumi}{\alph{enumi}}
+\begin{enumerate}
+\item Tutorial Mode (press 'L' key to change to this mode): The program will teach the user to play a simple song by lighting up the LEDs next to the note that they should play.
+\item Free-style Mode (default mode) : Operates as a normal electric keyboard. Whenever a key is played, the corresponding LED lights up on the breadboard, and there is an animation on the specific key on the screen.
+\\
+\\
+\\
+\end{enumerate}
+Wiring and hardware:
+
+\begin{itemize}
+\item LED: Each LED is connected to a power source (3.3V or 5V) through a resistor, and a GPIO pin on the Raspberry Pi.
+\item Button switch: Each button switch is connected to a ground and a GPIO pin. There are 6 white keys corresponding to the notes C,D,E,F,G and A on a piano, and 4 black keys corresponding to the C$\sharp$,D$\sharp$,F$\sharp$ and G$\sharp$ notes. Each of the white keys has a corresponding LED light.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width = 10cm, height = 5cm]{ARM.png}
+\caption{Circuit diagram showing how the LED and buttons are connected}
+\end{figure}
+
+
+We used the \texttt{wiringPi} library to define and control the input and output of the Raspberry Pi. Since the pins were represented differently in the \texttt{wiringPi} library, we used a conversion chart which mapped the \texttt{wiringPi} pin numbers to the actual physical location of the GPIO pins on the Raspberry Pi. We also used \texttt{SDL/SDL2} to render the images to the computer screen, and play the notes when the corresponding button is pressed.
+\\
+\subsection{Software design:}
+Our code utilises the Simple DirectMedia library (SDL 2.0), which allows us to render graphics and mix audio for sound playback.
+\\
+
+We created two data structures to represent the keyboard and the specific keys it contains. The keyboard is stored as an array of keys, and each of the keys store their corresponding note, audio, and wiring numbers.
+
+\begin{lstlisting}[language=C, caption={Pi-ano key structure}]
+typedef struct key {
+  note_t    note;
+  Mix_Chunk *audio;
+  wiring_keys led;
+  wiring_keys button;
+} piano_key_t;
+\end{lstlisting} 
+
+In our main program, the application window, renderer, keyboard and audio buffer is initialised. This involves allocating space on the heap for the keyboard, loading all the sound samples for each key and assigning notes to each, loading the menu screen, and configuring the playback of sound, which includes details such as how many channels are used and the bit rate.
+\\
+\\
+After this, the main piano graphic is loaded, and the software continuously checks for user inputs (key presses on the keyboard or button presses through the inputs of the Raspberry Pi), which trigger sounds, visual animation, LED lights, or can signal an exit from the program.
+\\
+\\
+In order to play the piano sounds, SDL Mixer in the SDL library is used. After the execution of the program, we then clean up by closing the sound devices and freeing all of the memory we have allocated to the keyboard, as well as destroying the created renderer and window.
+
+\subsection{Challenges, problems, and possible improvements}
+We had challenges with the audio delay whenever a piano key was pressed. The problem was that we always loaded the sound file after a key was pressed. To overcome this, we loaded all the music files into a data structure before the piano program started. This way, every time a key was pressed, it would only need to fetch the audio information from the data structure, rather than loading the file repeatedly. 
+\\
+\\
+Another challenge we encountered were memory leaks. As we added more features to our Pi-ano, the program often crashed or became extremely slow. We tackled this problem by using Valgrind. We read through our code carefully and made sure that we freed everything that we allocated. Even though this process was quite tedious, we fixed the memory leaks in the end, which allowed the Pi-ano run much more smoothly.
+\\
+\\
+There was also a challenge with connecting LED lights to the Raspberry Pi. Since we had 10 piano keys, there weren't enough voltage pins for the LED lights and there were not enough GROUND pins for the buttons. This led us to learn more about the circuit of the breadboard so that we could share the power supply between LED lights and also share the GROUND pins with several buttons. We did not know this initially, but after testing and researching about the circuits, we managed to solve the problem. After solving this problem, we figured that there was a possible improvement for our circuit. We could reduce the number of GPIO used by sharing GROUND and voltage pins. This way, we can have spare GPIO pins for other possible extensions. (e.g. adding more keys to the keyboard)
+\\
+\\
+Regarding debugging and freeing memory leaks, as a group we were not familiar with using Valgrind and any kind of debugger. We used print statements in our code to figure our what was happening. In the future, we would like to understand Valgrind better and be competent with a debugger (e.g. GDB) as it will tremendously speed up our progress. For example, when debugging the assembler, we finally tried using GDB and problems were more easily identifiable.
+\\
+\\
+A particular challenge that we could not fully address in our limited time is the animation delay on the Raspberry Pi. We tested our method of animating the piano on the Linux system, but when we transferred this method to the Raspberry Pi, the animation appeared with a lot of delay. We speculate that this was due to the fact that our animations were continuously loading and closing image files, which made the program slow, especially on the Raspberry Pi (as it has lower memory and RAM). If we were to improve on our project, we would experiment with other ways to implement animations.
+\subsection{Testing} 
+We tested our program by running it and playing various notes to ensure that they worked correctly. We also ensured that there was a minimal time lag between the input(pressing a key) and output(lighting up of LED, hearing the correct note, visual animation). We also tested certain edge cases of our program. For example, if we pressed the wrong key in the learning mode, would the program do the right thing, or if we pressed two keys at once, would the sound still be correct. This allowed us to make sure that the program did not crash when random keys are inputted by the user at unusual times.
+\\
+\\
+This method of testing proved effective as we already knew what our output was supposed to be. By running the program, we were able to match the expected output with the actual output for different inputs.
+\subsection{Group reflection} 
+As a group, we feel that all of us have gained a deeper understanding of the language C. One of our strengths was that we all understood each other's code and were able to offer constructive advice to each other's code. This was very important as different members had unique and useful ideas of how to implement something more efficiently or how to structure the program better.
+\\
+\\
+One of the things we could have improved on is how we distributed the tasks during the beginning of the project. While we were programming the emulator, we split the emulator into four separate parts which we would combine into one in the end. Even though this was a fair distribution of work, this caused a lot of merging problems and it affected our code style consistency. For example, we have different approaches for naming conventions and when using different text editors, some members mistakenly used different styles of indentation. Next time, we would split the tasks so that half of the group works on the emulator and the other half work on the assembler. This way, it would be easier to co-operate and it would cause less clashes with other member's code.
+
+\subsection{Individual reflections} 
+\begin{enumerate}
+\item Christopher
+\\
+The past three weeks has been challenging but I'm glad I have gotten to do it, especially with this group. Initially starting the project out is particularly challenging because of my lack of experience in C and there was no base to work on from, unlike past courseworks. This allowed me to think of how to create a program from scratch and how to tailor our data structure to our program. It was fun being able to adapt and modify our data structure as we progress as it gave us the creative freedom to implement whatever we thought was best. Moreover, this project allowed me to communicate my ideas in a more technical manner which really boosted my confidence as a programmer. A challenging aspect I found when working in groups is that it was difficult to effectively communicate and work on different parts of the code in parallel. There were times where we decided to get together and solve a core issue in our program which hindered us from doing our own individual work. In the future, I would like to avoid this so that we can complete our work faster. A strength that I found is that I was able to initiate the project such as proposing the data structures that we are going to implement. However, a lot of times I find myself stuck in hard problems and lack the perseverance to keep researching and figuring out how to rectify a problem. Working with this group has inspired me to work harder and be more persistent in future projects because they were able to do things which I wouldn't be able to do alone.
+\item Jasmine
+\\
+I thoroughly enjoyed working on this project with my group over the past few weeks, and gained skills in teamwork and collaboration and experience in building, planning, and executing a project from scratch and using git for group work. Although it initially took me some time to get used to working in C, I quickly adapted to the language with the help of my group members, and was able to make significant contributions to our project in each part. For this reason, I felt that I fit in well with my group and we were able to work harmoniously together, as we all supported and encouraged each other to improve on the things we were individually weak at, allowing us to make the most of our strengths as a group. However, I personally think that I could have communicated better with my team regarding the code I had written, as we often found our code had duplication which we had to spend unnecessary time removing. This is one of the things I will strive to improve at for future group projects to avoid wasting the time of my team members. One of my strengths which I developed during this project and would like to carry forward to future projects is a perseverance in learning new things. This was especially useful in the extension, for which we learnt to utilise the Simple DirectMedia Layer library to access graphic and sound playback hardware, enabling us to create Pi-ano.
+\\
+\item Esther
+\\
+This project has taught me how to co-operate better, understand C better, and develop a sense of intuition of how we can start building a program from scratch. I really enjoyed working in my team and I feel that we worked together well. We were all open to new ideas and we all helped each other when needed. This allowed us to learn from each other, and improve our own technical skills. Outside of software, I have also particularly learned a lot about Raspberry-Pi and how we can utilize them to create something useful eg. Buttons, LEDs etc. Something that I could have improved on in this project was my communication. At times, I would write code that has already be written and this was not efficient. It would have been better if I asked if anyone has already written the functions so that I could reuse them if they did. Also, naming conventions were different because of our lack of communication. Next time, we could discuss the structure of the program in detail and what code style we are going to use before coding separately. Overall, this project has given me a lot of skills and I hope to be able to create another project in the future with the Raspberry-Pi.
+\item Bargavi
+\\
+This project has increased my understanding of C and assembly language programming, and has allowed me to learn how to code better. It has also allowed me to develop my communication skills. I enjoyed working with this group and learned how to co-ordinate and contribute to a group project better. I believe our group dynamic was excellent, and that we all had something to bring to this project. I was pleasantly surprised by how fun it was to set up and work with the Raspberry Pi, and look forward to similar projects. I definitely believe that everyone in this group including me can have learned some useful and valuable skills that will help us in future projects and in a professional environment. One thing that I can improve on is my time management skills. I think if I had divide my time more efficiently, I could have had more time while writing the code to write it more efficiently, rather than wasting time going through every little bit and cleaning it up later. 
+\end{enumerate}
+\subsection{Bibliography/References }
+\begin{itemize}
+\item https://pinout.xyz/pinout/wiringpi\# - To obtain the wiringPi pin nos. corresponding to the GPIO pin
+\item https://www.sunfounder.com/learn/Super$\_$Kit$\_$V2$\_$for$\_$RaspberryPi/lesson-2-controlling-an-led-by-a-button-super-kit-for-raspberrypi.html  - How to connect an LED and Button to raspberry Pi
+\item jobro. “Pack: Piano FF.” Freesound, 16 Aug. 2007, freesound.org/people/jobro/packs/2489/.
+
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
 
 \end{document}
+
+

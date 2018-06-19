@@ -1,5 +1,6 @@
-#include "ioutils.h"
+#include <stdio.h>
 #include "definitions.h"
+
 /*
 *  reads input binary file and stores instructions in memory.
 */

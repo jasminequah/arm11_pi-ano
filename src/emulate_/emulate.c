@@ -1,7 +1,5 @@
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
-#include <assert.h>
 #include "definitions.h"
 #include "utilities.h"
 #include "ioutils.h"
@@ -136,7 +134,7 @@ void executeSDT(state_t *state) {
   uint32_t* registers      = state->registers;
   uint8_t* memory          = state->memory;
   uint32_t baseRegContents = registers[decoded->rn];
-  
+
   uint32_t offset = registers[(decoded->offset) & FIRST_4_BITS];
   if (decoded->isI) {
     int bit4 = (decoded->offset) & BIT_4;
@@ -219,8 +217,8 @@ void execute(state_t *state) {
 
 void decodeBranch(pipeline_t *pipeline, uint32_t instruction) {
   pipeline->decoded->offset   = ((int) (instruction << 8)) >> 6;
-  pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;   
-} 
+  pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;
+}
 
 void decodeDataProcessing(pipeline_t *pipeline, uint32_t instruction) {
   pipeline->decoded->cond     = (cond_t) instruction >> PC_SHIFT;

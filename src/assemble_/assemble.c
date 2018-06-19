@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
 #include "definitions.h"
 #include "utilities.h"
 #include "ioutils.h"
