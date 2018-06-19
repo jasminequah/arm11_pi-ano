@@ -104,82 +104,52 @@ void play_audio(piano_key_t *key) {
 
 void check_keys(keyboard_t *keyboard, const char *key, SDL_Renderer *renderer) {
    if(!strcmp(key, "A")) {
-      keyboard->keys[C].is_pressed = 1;
       play_audio(&keyboard->keys[C]);
       display_note(renderer, C);
-    } else {
-      keyboard->keys[C].is_pressed = 0;
     }
 
     if(!strcmp(key, "S")) {
-      keyboard->keys[D].is_pressed = 1;
       play_audio(&keyboard->keys[D]);
       display_note(renderer, D);
-    } else {
-      keyboard->keys[D].is_pressed = 0;
     }
 
     if(!strcmp(key, "D")) {
-      keyboard->keys[E].is_pressed = 1;
       play_audio(&keyboard->keys[E]);
       display_note(renderer, E);
-    } else {
-      keyboard->keys[E].is_pressed = 0;
     }
 
     if(!strcmp(key, "F")) {
-      keyboard->keys[F].is_pressed = 1;
       play_audio(&keyboard->keys[F]);
       display_note(renderer, F);
-    } else {
-      keyboard->keys[F].is_pressed = 0;
     }
 
     if(!strcmp(key, "G")) {
-      keyboard->keys[G].is_pressed = 1;
       play_audio(&keyboard->keys[G]);
       display_note(renderer, G);
-    } else {
-      keyboard->keys[G].is_pressed = 0;
     }
 
     if(!strcmp(key, "H")) {
-      keyboard->keys[A].is_pressed = 1;
       play_audio(&keyboard->keys[A]);
       display_note(renderer, A);
-    } else {
-      keyboard->keys[A].is_pressed = 0;
     }
 
     if(!strcmp(key, "W")) {
-      keyboard->keys[C_SHARP].is_pressed = 1;
       play_audio(&keyboard->keys[C_SHARP]);
       display_note(renderer, C_SHARP);
-    } else {
-      keyboard->keys[C_SHARP].is_pressed = 0;
     }
 
     if (!strcmp(key, "E")) {
-      keyboard->keys[D_SHARP].is_pressed = 1;
       play_audio(&keyboard->keys[D_SHARP]);
       display_note(renderer, D_SHARP);
-    } else {
-      keyboard->keys[D_SHARP].is_pressed = 0;
     }
 
     if (!strcmp(key, "T")) {
-      keyboard->keys[F_SHARP].is_pressed = 1;
       play_audio(&keyboard->keys[F_SHARP]);
       display_note(renderer, F_SHARP);
-    } else {
-      keyboard->keys[F_SHARP].is_pressed = 0;
     }
 
     if (!strcmp(key, "Y")) {
-      keyboard->keys[G_SHARP].is_pressed = 1;
       play_audio(&keyboard->keys[G_SHARP]);
       display_note(renderer, G_SHARP);
-    } else {
-      keyboard->keys[G_SHARP].is_pressed = 0;
     }
 }

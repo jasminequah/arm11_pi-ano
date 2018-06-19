@@ -9,7 +9,6 @@
 
 typedef struct key {
   note_t note;
-  int    is_pressed;
   Mix_Chunk *audio;
 } piano_key_t;
 
